@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -15,7 +16,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun AnimatedGradientBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+fun AnimatedGradientBox(
+    modifier: Modifier = Modifier,
+    colors: List<Color> = listOf(
+        Color(0xFFFFB74D), // Strong Orange
+        Color(0xFF81C784), // Strong Green
+        Color(0xFF64B5F6), // Strong Blue
+        Color(0xFFFFF176)  // Strong Yellow
+    ),
+    content: @Composable BoxScope.() -> Unit
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     
     // Animate the gradient angle/position
@@ -40,14 +50,9 @@ fun AnimatedGradientBox(modifier: Modifier = Modifier, content: @Composable BoxS
     )
 
     val brush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFFFF9C4), // Light Yellow
-            Color(0xFFFFCC80), // Muted Orange (More visible)
-            Color(0xFFE1F5FE), // Very Light Blue (Contrast)
-            Color(0xFFFFF8E1)  // Warm Cream
-        ),
+        colors = colors,
         start = Offset(xOffset, yOffset),
-        end = Offset(xOffset + 600f, yOffset + 600f)
+        end = Offset(xOffset + 800f, yOffset + 800f)
     )
 
     Box(
@@ -55,6 +60,29 @@ fun AnimatedGradientBox(modifier: Modifier = Modifier, content: @Composable BoxS
             .fillMaxSize()
             .background(brush),
         content = content
+    )
+}
+
+object AppGradients {
+    val patientColors = listOf(
+        Color(0xFFFFB74D), // Orange
+        Color(0xFFFFF176), // Yellow
+        Color(0xFF81C784), // Green
+        Color(0xFFFFE0B2)  // Soft Orange
+    )
+
+    val caregiverColors = listOf(
+        Color(0xFFE0F7FA), // Very Light Cyan
+        Color(0xFFB2EBF2), // Light Cyan
+        Color(0xFFE1F5FE), // Very Light Blue
+        Color(0xFFF5F5F5)  // Near White
+    )
+    
+    val welcomeColors = listOf(
+        Color(0xFFFFF8E1), // Warm Cream
+        Color(0xFFE8F5E9), // Very Light Green
+        Color(0xFFE3F2FD), // Very Light Blue
+        Color(0xFFFFF3E0)  // Very Light Orange
     )
 }
 
@@ -78,7 +106,9 @@ fun SmritiButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.primary,
-    contentColor: Color = Color.White
+    contentColor: Color = Color.White,
+    icon: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "border")
     val borderAlpha by infiniteTransition.animateFloat(
@@ -94,6 +124,7 @@ fun SmritiButton(
     Button(
         onClick = onClick,
         modifier = modifier.padding(4.dp),
+        enabled = enabled,
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(2.dp, Brush.linearGradient(
             colors = listOf(
@@ -103,10 +134,18 @@ fun SmritiButton(
         )),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.5f),
+            disabledContentColor = contentColor.copy(alpha = 0.5f)
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                icon()
+                Spacer(Modifier.width(12.dp))
+            }
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }

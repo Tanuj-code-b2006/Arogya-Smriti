@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
 import com.smritisetu.app.ui.SmritiButton
 
 data class LangOption(val label: String, val code: String)
@@ -44,7 +45,7 @@ fun WelcomeScreen(navController: NavController) {
     )
 
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.welcomeColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -96,7 +97,7 @@ fun WelcomeScreen(navController: NavController) {
                 Spacer(Modifier.height(20.dp))
                 SmritiButton(
                     text = "👨‍👩‍👧 I am a Caregiver",
-                    onClick = { navController.navigate("caregiver_dashboard") },
+                    onClick = { navController.navigate("caregiver_section") },
                     modifier = Modifier.fillMaxWidth(0.85f).height(72.dp),
                     containerColor = MaterialTheme.colorScheme.primary
                 )

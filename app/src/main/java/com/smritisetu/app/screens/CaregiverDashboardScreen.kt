@@ -2,7 +2,9 @@ package com.smritisetu.app.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,39 +16,67 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.data.AlertsRepository
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
+import com.smritisetu.app.ui.SmritiButton
 
 @Composable
 fun CaregiverDashboardScreen(navController: NavController) {
-    val weeklyScores = listOf(60, 65, 58, 70, 75, 80, 78) // mock accuracy % per day
+    val weeklyScores = listOf(60, 65, 58, 70, 75, 80, 78)
 
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.caregiverColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    "👨‍👩‍👧 Caregiver Dashboard",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "👨‍👩‍👧 Caregiver Dashboard",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
+                }
                 Text("Patient: Anil Baruah, Age 74", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(20.dp))
 
+                // Quick nav cards to new detailed screens
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    DashboardNavCard("👤", "Patient\nProfile", Modifier.weight(1f)) {
+                        navController.navigate("patient_profile")
+                    }
+                    DashboardNavCard("📊", "Monitoring &\nAnalytics", Modifier.weight(1f)) {
+                        navController.navigate("monitoring")
+                    }
+                    DashboardNavCard(
+                        "🔔",
+                        "Alerts\n(${AlertsRepository.totalUnreadCount} new)",
+                        Modifier.weight(1f),
+                        highlight = AlertsRepository.unreadHighPriorityCount > 0
+                    ) {
+                        navController.navigate("alerts")
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Card(
-                    shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(4.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(
-                            "Weekly Cognitive Performance",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Weekly Cognitive Performance", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
                         BarChart(weeklyScores)
                     }
@@ -70,26 +100,70 @@ fun CaregiverDashboardScreen(navController: NavController) {
                             "Slight drop in attention-game accuracy detected on Wednesday. Consider a check-in.",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        Spacer(Modifier.height(12.dp))
+                        SmritiButton(
+                            text = "View All Alerts →",
+                            onClick = { navController.navigate("alerts") },
+                            containerColor = Color(0xFFC62828),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
-
-                Spacer(Modifier.height(20.dp))
-                Button(onClick = { navController.popBackStack() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Back")
-                }
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
 }
 
 @Composable
+fun DashboardNavCard(
+    icon: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.height(110.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = (if (highlight) Color(0xFFFFEBEE) else Color.White).copy(alpha = 0.9f)
+        ),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(icon, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
 fun StatCard(icon: String, label: String, value: String) {
-    Card(modifier = Modifier.height(100.dp).width(160.dp), shape = RoundedCornerShape(16.dp),
+    Card(
+        modifier = Modifier
+            .height(110.dp)
+            .width(165.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))) {
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+    ) {
         Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(icon, style = MaterialTheme.typography.headlineSmall)
-            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
             Text(label, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
@@ -98,7 +172,9 @@ fun StatCard(icon: String, label: String, value: String) {
 @Composable
 fun BarChart(data: List<Int>) {
     val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(160.dp)) {
         val barWidth = size.width / (data.size * 2)
         val maxVal = 100f
         data.forEachIndexed { i, value ->

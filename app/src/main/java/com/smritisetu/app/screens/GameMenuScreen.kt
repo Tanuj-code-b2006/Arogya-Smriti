@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
 
 data class GameItem(val icon: String, val title: String, val route: String?, val level: String)
 
@@ -22,12 +23,12 @@ fun GameMenuScreen(navController: NavController) {
     val games = listOf(
         GameItem("🧩", "Memory Match", "memory_game", "Level 2 (Adaptive)"),
         GameItem("👀", "Attention Tap", "attention_game", "Level 1"),
-        GameItem("🗓️", "Daily Routine Recall", null, "Coming up next"),
-        GameItem("🥭", "Pattern & Object ID", null, "Coming up next"),
+        GameItem("🗓️", "Daily Routine Sequencer", "routine_sequencer", "Drag & Drop"),
+        GameItem("🗣️", "AI Memory Chat", "ai_chat_companion", "Voice + AI"),
     )
 
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.patientColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()

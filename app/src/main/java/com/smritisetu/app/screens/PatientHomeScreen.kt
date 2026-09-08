@@ -10,11 +10,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
 
 @Composable
 fun PatientHomeScreen(navController: NavController) {
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.patientColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
