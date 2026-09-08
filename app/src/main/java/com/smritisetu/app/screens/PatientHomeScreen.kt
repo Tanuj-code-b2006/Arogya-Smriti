@@ -32,11 +32,11 @@ fun PatientHomeScreen(navController: NavController) {
                 Spacer(Modifier.height(40.dp))
 
                 HomeCard("🎮", "Play Cognitive Games") { navController.navigate("game_menu") }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
+                HomeCard("📝", "Recall My Day") { navController.navigate("daily_recall") }
+                Spacer(Modifier.height(16.dp))
                 HomeCard("⏰", "My Reminders") { navController.navigate("reminders") }
-                Spacer(Modifier.height(20.dp))
-                HomeCard("📖", "Today's Story (Voice)") { /* mock */ }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 HomeCard("📞", "Call Family") { /* mock */ }
             }
         }

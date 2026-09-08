@@ -3,6 +3,7 @@ import androidx.compose.foundation.layout.padding
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
@@ -27,6 +28,7 @@ import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent {
             SmritiSetuTheme {
@@ -93,6 +95,9 @@ fun AppRoot() {
                 composable("caregiver_section") { CaregiverSectionScreen(navController) }
                 composable("patient_list") { PatientListScreen(navController) }
                 composable("add_patient") { AddPatientScreen(navController) }
+                composable("daily_recall") { DailyRecallScreen(navController) }
+                composable("task_recall_game") { TaskRecallGameScreen(navController) }
+                composable("cultural_game") { CulturalRecognitionGameScreen(navController) }
             }
 
             // Live push-style banner, shown above everything, only on caregiver screens
