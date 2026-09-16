@@ -35,9 +35,9 @@ fun PatientHomeScreen(navController: NavController) {
                 Spacer(Modifier.height(16.dp))
                 HomeCard("📝", "Recall My Day") { navController.navigate("daily_recall") }
                 Spacer(Modifier.height(16.dp))
-                HomeCard("⏰", "My Reminders") { navController.navigate("reminders") }
+                HomeCard("📋", "My Daily Plan") { navController.navigate("create_routine") }
                 Spacer(Modifier.height(16.dp))
-                HomeCard("📞", "Call Family") { /* mock */ }
+                HomeCard("👨‍👩‍👧", "Mere Apne") { navController.navigate("family_gallery") }
             }
         }
     }

@@ -1,8 +1,7 @@
 package com.smritisetu.app.screens
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,16 +12,40 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.smritisetu.app.R
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
 import kotlinx.coroutines.delay
 
-data class MemoryCard(val id: Int, val symbol: String, var isFlipped: Boolean = false, var isMatched: Boolean = false)
+data class FamilyMemberInfo(
+    val imageRes: Int,
+    val name: String,
+    val relation: String
+)
 
-// Culturally familiar symbols (fruits/household items relevant to NER context)
-val symbolPool = listOf("🍌", "🍚", "🐘", "🌸", "🍵", "🧣", "🥥", "🎋", "🦚", "🪔")
+data class MemoryCard(
+    val id: Int,
+    val info: FamilyMemberInfo,
+    var isFlipped: Boolean = false,
+    var isMatched: Boolean = false
+)
+
+// Updated Family photos with names and relations
+val familyPhotoPool = listOf(
+    FamilyMemberInfo(R.drawable.rahul_son, "Rahul", "Son"),
+    FamilyMemberInfo(R.drawable.sunita_baruah_daughter, "Ishani", "Wife"),
+    FamilyMemberInfo(R.drawable.ishan_nephew, "Ishan", "Nephew"),
+    FamilyMemberInfo(R.drawable.mishi_daughter_in_law, "Mishi", "Daughter-in-law"),
+    FamilyMemberInfo(R.drawable.bhupen_hazarika_neighbour, "Bhupen Hazarika", "Neighbour")
+)
 
 @Composable
 fun MemoryMatchGameScreen(navController: NavController) {
@@ -40,11 +63,11 @@ fun MemoryMatchGameScreen(navController: NavController) {
 
     LaunchedEffect(firstPick, secondPick) {
         if (firstPick != null && secondPick != null) {
-            delay(700)
+            delay(800)
             val c1 = cards[firstPick!!]
             val c2 = cards[secondPick!!]
             cards = cards.toMutableList().also { list ->
-                if (c1.symbol == c2.symbol) {
+                if (c1.info.imageRes == c2.info.imageRes) {
                     list[firstPick!!] = c1.copy(isMatched = true)
                     list[secondPick!!] = c2.copy(isMatched = true)
                 } else {
@@ -60,10 +83,9 @@ fun MemoryMatchGameScreen(navController: NavController) {
 
     LaunchedEffect(allMatched) {
         if (allMatched && cards.isNotEmpty()) {
-            // --- Simulated AI adaptive difficulty logic ---
             val accuracy = if (moves == 0) 1f else (moves - mistakes).toFloat() / moves
             difficultyMessage = when {
-                accuracy > 0.7f && gridSize < 8 -> {
+                accuracy > 0.7f && gridSize < 10 -> {
                     gridSize += 2
                     "Great job! 🎉 Increasing difficulty next round."
                 }
@@ -78,7 +100,7 @@ fun MemoryMatchGameScreen(navController: NavController) {
     }
 
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.patientColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -92,16 +114,22 @@ fun MemoryMatchGameScreen(navController: NavController) {
                     Text(
                         "🧩 Memory Match",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                     TextButton(onClick = { navController.popBackStack() }) { Text("Exit") }
                 }
                 Text("Moves: $moves    Mistakes: $mistakes", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
 
-                LazyVerticalGrid(columns = GridCells.Fixed(if (gridSize <= 4) 2 else 3)) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(if (gridSize <= 4) 2 else 3),
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(cards, key = { it.id }) { card ->
-                        MemoryCardView(card = card, enabled = firstPick == null || secondPick == null) {
+                        MemoryCardView(card = card) {
                             if (!card.isFlipped && !card.isMatched && secondPick == null) {
                                 cards = cards.toMutableList().also { it[card.id] = card.copy(isFlipped = true) }
                                 moves++
@@ -135,37 +163,61 @@ fun MemoryMatchGameScreen(navController: NavController) {
 }
 
 fun generateCards(size: Int): List<MemoryCard> {
-    val symbols = symbolPool.shuffled().take(size / 2)
-    return (symbols + symbols).shuffled().mapIndexed { index, s -> MemoryCard(id = index, symbol = s) }
+    val pool = familyPhotoPool.shuffled().take(size / 2)
+    return (pool + pool).shuffled().mapIndexed { index, info -> 
+        MemoryCard(id = index, info = info) 
+    }
 }
 
 @Composable
-fun MemoryCardView(card: MemoryCard, enabled: Boolean, onClick: () -> Unit) {
+fun MemoryCardView(card: MemoryCard, onClick: () -> Unit) {
     val bgColor by animateColorAsState(
         targetValue = when {
             card.isMatched -> Color(0xFFA5D6A7)
-            card.isFlipped -> Color(0xFFFFF9C4)
-            else -> Color(0xFF2E7D32)
+            card.isFlipped -> Color.White
+            else -> MaterialTheme.colorScheme.primary
         }, label = "cardColor"
     )
-    Box(
+    
+    Card(
+        onClick = onClick,
         modifier = Modifier
-            .padding(8.dp)
-            .aspectRatio(1f)
-            .background(bgColor, RoundedCornerShape(14.dp)),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .height(if (card.isFlipped || card.isMatched) 180.dp else 140.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Card(
-            onClick = onClick,
-            modifier = Modifier.fillMaxSize().padding(4.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = bgColor)
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = if (card.isFlipped || card.isMatched) card.symbol else "❓",
-                    style = MaterialTheme.typography.headlineLarge
-                )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (card.isFlipped || card.isMatched) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxSize().padding(8.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = card.info.imageRes),
+                        contentDescription = card.info.name,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = card.info.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "(${card.info.relation})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Text(text = "❓", fontSize = 48.sp, color = Color.White)
             }
         }
     }

@@ -32,10 +32,25 @@ object GeminiApiClient {
     ): String = withContext(Dispatchers.IO) {
         try {
             val systemPrompt = """
-                You are a warm, patient companion talking to an elderly dementia patient in North-East India.
-                Ask ONE simple, gentle memory-boosting question at a time (e.g. about their day, family,
-                childhood, food, festivals). Keep sentences short and easy to understand. Never sound clinical.
-                If the user answers, briefly praise/acknowledge their answer, then ask the next simple question.
+                You are a warm, patient, and friendly AI companion named 'Dost' talking to Anil Baruah, a 74-year-old gentleman from Sonapur, Kamrup, Assam.
+                
+                Patient Details:
+                - Name: Anil Baruah
+                - Age: 74
+                - Diagnosis: Mild Cognitive Impairment (Early Dementia), diagnosed on 12 March 2025.
+                - MMSE Score: 22/30.
+                - Primary Caregiver: His daughter, Sunita Baruah.
+                - Doctor: Dr. Rina Deka (NEIGRIHMS).
+                - Medicines: Donepezil (morning), Amlodipine (for BP), Vitamin D3 (weekly).
+                - Preferences: Enjoys Assamese culture, Memory Match games, and simple chats.
+                
+                Your Goal:
+                - Act as a supportive friend.
+                - Ask ONE simple, gentle memory-boosting question at a time.
+                - Use the details above to make questions personal (e.g., asking about his daughter Sunita, his hometown Sonapur, his morning medicine, or Assamese festivals).
+                - Keep sentences short, warm, and very easy to understand. 
+                - If he answers, acknowledge it with praise (e.g., "That's wonderful, Anil ji!") and then ask the next question.
+                - Never sound like a robot or a doctor. Be like a family member.
             """.trimIndent()
 
             val contents = JSONArray()
@@ -79,17 +94,18 @@ object GeminiApiClient {
         }
     }
 
-    // Offline/no-key fallback so the demo always works
+    // Offline/no-key fallback personalized for Anil ji
     private val mockQuestions = listOf(
-        "What did you eat for breakfast today?",
-        "Can you tell me the name of your favorite festival?",
-        "Who is your youngest grandchild? What is their name?",
-        "What was your favorite game to play as a child?",
-        "What is the name of the village or town you were born in?",
-        "Can you describe what the weather is like today?"
+        "Anil ji, did you take your morning medicine (Donepezil) today?",
+        "How is Sunita Baruah doing? Have you spoken to your daughter recently?",
+        "Sonapur is such a beautiful place. What is your favorite thing about your hometown?",
+        "What did you have for breakfast this morning, Anil ji?",
+        "Do you remember which Assamese festival is coming up next?",
+        "Would you like to play a round of Memory Match today?",
+        "Dr. Rina Deka says it's important to keep active. Shall we talk about your childhood memories?"
     )
     private fun mockFallback(userJustSaid: String?): String {
-        val ack = if (userJustSaid.isNullOrBlank()) "" else "That's wonderful, thank you for sharing! "
+        val ack = if (userJustSaid.isNullOrBlank()) "" else "That's wonderful, Anil ji! Thank you for sharing. "
         return ack + mockQuestions.random()
     }
 }

@@ -88,6 +88,7 @@ fun AppRoot() {
                 composable("routine_sequencer") { RoutineSequencerScreen(navController) }
                 composable("ai_chat_companion") { AIChatCompanionScreen(navController) }
                 composable("reminders") { RemindersScreen(navController) }
+                composable("create_routine") { CreateRoutineScreen(navController) }
                 composable("caregiver_dashboard") { CaregiverDashboardScreen(navController) }
                 composable("patient_profile") { PatientProfileScreen(navController) }
                 composable("monitoring") { MonitoringScreen(navController) }
@@ -98,6 +99,8 @@ fun AppRoot() {
                 composable("daily_recall") { DailyRecallScreen(navController) }
                 composable("task_recall_game") { TaskRecallGameScreen(navController) }
                 composable("cultural_game") { CulturalRecognitionGameScreen(navController) }
+                composable("family_gallery") { FamilyGalleryScreen(navController) }
+                composable("photo_quiz") { PhotoGuessQuizScreen(navController) }
             }
 
             // Live push-style banner, shown above everything, only on caregiver screens

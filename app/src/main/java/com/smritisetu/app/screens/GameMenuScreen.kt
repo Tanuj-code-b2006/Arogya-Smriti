@@ -27,6 +27,7 @@ fun GameMenuScreen(navController: NavController) {
         GameItem("👀", "Attention Tap", "attention_game", "Tap the right fruits"),
         GameItem("🗓️", "Routine Order", "routine_sequencer", "Arrange your morning"),
         GameItem("🧠", "Daily Tasks", "task_recall_game", "Remember today's tasks"),
+        GameItem("🖼️", "Pehchano Kaun?", "photo_quiz", "Identify cultural items"),
         GameItem("🗣️", "Dost - Talking Friend", "ai_chat_companion", "Chat with your AI friend"),
     )
 
