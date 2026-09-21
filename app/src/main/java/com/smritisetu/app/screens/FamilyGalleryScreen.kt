@@ -23,28 +23,32 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.R
+import com.smritisetu.app.data.AppStrings
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
-import com.smritisetu.app.ui.SmritiButton
 
 data class FamilyMember(
-    val name: String,
-    val relation: String,
+    val nameKey: (AppStrings) -> String,
+    val relationKey: (AppStrings) -> String,
     val phone: String,
-    val emoji: String
+    val imageRes: Int
 )
 
-private val familyMembers = listOf(
-    FamilyMember("Sunita Baruah", "Daughter (बेटी)", "9800000021", "👩‍💼"),
-    FamilyMember("Rahul Baruah", "Son (बेटा)", "9400000008", "👨‍💻"),
-    FamilyMember("Aryan", "Grandson (पोता)", "9100000000", "👦"),
-    FamilyMember("Dr. Rina Deka", "Doctor (डॉक्टर)", "9400000001", "👩‍⚕️")
+private fun getFamilyMembers(s: AppStrings) = listOf(
+    FamilyMember({ s.nameSunita }, { s.daughterLabel }, "9800000021", R.drawable.mishi_daughter_in_law),
+    FamilyMember({ s.nameRahul }, { s.sonLabel }, "9400000008", R.drawable.rahul_son),
+    FamilyMember({ s.nameAryan }, { s.grandsonLabel }, "9100000000", R.drawable.bhupen_hazarika_neighbour),
+    FamilyMember({ s.nameRina }, { s.doctorLabel }, "9400000001", R.drawable.sunita_baruah_daughter)
 )
 
 @Composable
 fun FamilyGalleryScreen(navController: NavController) {
     val context = LocalContext.current
+    val s = Localization.strings()
+    val familyList = getFamilyMembers(s)
 
     AnimatedScreen {
         AnimatedGradientBox(colors = AppGradients.patientColors) {
@@ -55,18 +59,19 @@ fun FamilyGalleryScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "👨‍👩‍👧 Mere Apne",
+                        s.mereApne,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text(s.back) }
                 }
-                Text("Tap on a photo to talk to your family!", style = MaterialTheme.typography.bodyLarge)
+                Text(s.tapToCall, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(20.dp))
 
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(familyMembers) { member ->
-                        FamilyCard(member) {
+                    items(familyList) { member ->
+                        FamilyCard(member, s) {
                             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${member.phone}"))
                             context.startActivity(intent)
                         }
@@ -78,7 +83,7 @@ fun FamilyGalleryScreen(navController: NavController) {
 }
 
 @Composable
-fun FamilyCard(member: FamilyMember, onCall: () -> Unit) {
+fun FamilyCard(member: FamilyMember, s: AppStrings, onCall: () -> Unit) {
     Card(
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(6.dp),
@@ -89,22 +94,21 @@ fun FamilyCard(member: FamilyMember, onCall: () -> Unit) {
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Placeholder for photo (using emoji as a fallback)
-            Box(
+            Image(
+                painter = painterResource(id = member.imageRes),
+                contentDescription = member.nameKey(s),
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(member.emoji, style = MaterialTheme.typography.displayMedium)
-            }
+                contentScale = ContentScale.Fit
+            )
 
             Spacer(Modifier.width(20.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(member.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(member.relation, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Text(member.nameKey(s), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(member.relationKey(s), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
             }
 
             IconButton(
@@ -114,7 +118,12 @@ fun FamilyCard(member: FamilyMember, onCall: () -> Unit) {
                     .clip(CircleShape)
                     .background(Color(0xFF2E7D32))
             ) {
-                Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White, modifier = Modifier.size(32.dp))
+                Icon(
+                    imageVector = Icons.Default.Call, 
+                    contentDescription = "Call", 
+                    tint = Color.White, 
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
     }

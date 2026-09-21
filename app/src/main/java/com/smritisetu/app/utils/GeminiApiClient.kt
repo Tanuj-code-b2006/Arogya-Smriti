@@ -1,5 +1,6 @@
 package com.smritisetu.app.utils
 
+import com.smritisetu.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -8,27 +9,21 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
 
 object GeminiApiClient {
 
-    // 🔑 PASTE YOUR FREE GEMINI API KEY HERE (from https://aistudio.google.com/apikey)
-    private const val API_KEY = "AIzaSyDxLUlCy7_iP0czN6FmAfIVkDNBD-jdP5A"
+    // Accessing API Key from BuildConfig (securely stored in local.properties)
+    private val API_KEY = BuildConfig.GEMINI_API_KEY
 
-    private const val ENDPOINT =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$API_KEY"
+    private val ENDPOINT =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$API_KEY"
 
     private val client = OkHttpClient()
 
-    /**
-     * Sends the conversation so far + a system instruction to Gemini and returns
-     * the model's next question/response as a String.
-     * Falls back to a local mock question bank if no API key is set or the call fails,
-     * so the demo NEVER breaks on stage even without internet/API key.
-     */
     suspend fun getNextMemoryQuestionOrReply(
-        conversationHistory: List<Pair<String, String>>, // (role "user"/"model", text)
-        userJustSaid: String?
+        conversationHistory: List<Pair<String, String>>,
+        userJustSaid: String?,
+        languageLabel: String = "English"
     ): String = withContext(Dispatchers.IO) {
         try {
             val systemPrompt = """
@@ -37,27 +32,24 @@ object GeminiApiClient {
                 Patient Details:
                 - Name: Anil Baruah
                 - Age: 74
-                - Diagnosis: Mild Cognitive Impairment (Early Dementia), diagnosed on 12 March 2025.
-                - MMSE Score: 22/30.
-                - Primary Caregiver: His daughter, Sunita Baruah.
-                - Doctor: Dr. Rina Deka (NEIGRIHMS).
-                - Medicines: Donepezil (morning), Amlodipine (for BP), Vitamin D3 (weekly).
-                - Preferences: Enjoys Assamese culture, Memory Match games, and simple chats.
+                - Diagnosis: Mild Cognitive Impairment (Early Dementia)
+                - Primary Caregiver: His daughter, Sunita Baruah
+                - Doctor: Dr. Rina Deka (NEIGRIHMS)
+                - Medicines: Donepezil (morning), Amlodipine (for BP)
+                - Preferences: Enjoys Assamese culture, Memory Match games.
                 
-                Your Goal:
-                - Act as a supportive friend.
-                - Ask ONE simple, gentle memory-boosting question at a time.
-                - Use the details above to make questions personal (e.g., asking about his daughter Sunita, his hometown Sonapur, his morning medicine, or Assamese festivals).
-                - Keep sentences short, warm, and very easy to understand. 
-                - If he answers, acknowledge it with praise (e.g., "That's wonderful, Anil ji!") and then ask the next question.
-                - Never sound like a robot or a doctor. Be like a family member.
+                CRITICAL INSTRUCTION:
+                - You MUST respond ONLY in the $languageLabel language.
+                - Use the script (alphabet) of $languageLabel.
+                - Even if the conversation history is in English, your next response MUST be in $languageLabel.
+                - If the language is 'Assamese', write in Assamese script.
+                - If the language is 'Hindi', write in Devanagari script.
+                - Act as a supportive friend. Do not sound like a machine.
+                - Ask ONE simple, personal question at a time.
+                - IMPORTANT: Do not use any English words if the target language is different.
             """.trimIndent()
 
             val contents = JSONArray()
-            contents.put(JSONObject().apply {
-                put("role", "user")
-                put("parts", JSONArray().put(JSONObject().put("text", systemPrompt)))
-            })
             conversationHistory.forEach { (role, text) ->
                 contents.put(JSONObject().apply {
                     put("role", role)
@@ -71,15 +63,19 @@ object GeminiApiClient {
                 })
             }
 
-            val body = JSONObject().put("contents", contents)
-                .toString()
-                .toRequestBody("application/json".toMediaType())
+            val requestBodyJson = JSONObject().apply {
+                put("contents", contents)
+                put("system_instruction", JSONObject().apply {
+                    put("parts", JSONArray().put(JSONObject().put("text", systemPrompt)))
+                })
+            }
 
+            val body = requestBodyJson.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder().url(ENDPOINT).post(body).build()
 
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext mockFallback(userJustSaid)
-                val json = JSONObject(response.body?.string() ?: return@withContext mockFallback(userJustSaid))
+                if (!response.isSuccessful) return@withContext mockFallback(userJustSaid, languageLabel)
+                val json = JSONObject(response.body?.string() ?: return@withContext mockFallback(userJustSaid, languageLabel))
                 json.getJSONArray("candidates")
                     .getJSONObject(0)
                     .getJSONObject("content")
@@ -87,25 +83,16 @@ object GeminiApiClient {
                     .getJSONObject(0)
                     .getString("text")
             }
-        } catch (e: IOException) {
-            mockFallback(userJustSaid)
         } catch (e: Exception) {
-            mockFallback(userJustSaid)
+            mockFallback(userJustSaid, languageLabel)
         }
     }
 
-    // Offline/no-key fallback personalized for Anil ji
-    private val mockQuestions = listOf(
-        "Anil ji, did you take your morning medicine (Donepezil) today?",
-        "How is Sunita Baruah doing? Have you spoken to your daughter recently?",
-        "Sonapur is such a beautiful place. What is your favorite thing about your hometown?",
-        "What did you have for breakfast this morning, Anil ji?",
-        "Do you remember which Assamese festival is coming up next?",
-        "Would you like to play a round of Memory Match today?",
-        "Dr. Rina Deka says it's important to keep active. Shall we talk about your childhood memories?"
-    )
-    private fun mockFallback(userJustSaid: String?): String {
-        val ack = if (userJustSaid.isNullOrBlank()) "" else "That's wonderful, Anil ji! Thank you for sharing. "
-        return ack + mockQuestions.random()
+    private fun mockFallback(userJustSaid: String?, lang: String): String {
+        return when {
+            lang.contains("Hindi") || lang.contains("हिन्दी") -> "नमस्ते अनिल जी, क्या आपने आज अपनी दवाई ली?"
+            lang.contains("Assamese") || lang.contains("অসমীয়া") -> "নমস্কাৰ অনিল ডাঙৰীয়া, আপুনি আজি পুৱাৰ দৰব খালে নে?"
+            else -> "Hello Anil ji, did you take your morning medicine today?"
+        }
     }
 }

@@ -6,7 +6,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,287 +19,259 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
 import com.smritisetu.app.ui.SmritiButton
-import kotlinx.coroutines.delay
-import kotlin.random.Random
+import com.smritisetu.app.utils.rememberVoiceNarrator
+import com.smritisetu.app.data.Localization
+import com.smritisetu.app.data.AppStrings
 
-data class DailyTask(
+data class GameTask(
+    val id: Int, 
+    val titleKey: (AppStrings) -> String, 
     val icon: String,
-    val text: String,
-    val options: List<String>
+    val optionsKey: (AppStrings) -> List<String>
 )
-
-private val todaysTasks = listOf(
-    DailyTask("🪴", "Water the tulsi plant in the courtyard",
-        listOf("Water the tulsi plant", "Feed the chickens", "Sweep the yard", "Fold the laundry")),
-    DailyTask("📞", "Call your daughter Sunita in the evening",
-        listOf("Call your daughter", "Call the doctor", "Call your neighbor", "Call your son")),
-    DailyTask("💊", "Take the evening medicine after dinner",
-        listOf("Take medicine after lunch", "Take medicine after dinner", "Take medicine before breakfast", "Skip medicine today")),
-    DailyTask("📚", "Read two pages of your favorite book",
-        listOf("Read two pages of a book", "Write a letter", "Watch television", "Listen to the radio")),
-    DailyTask("🚶", "Take a short walk in the garden after lunch",
-        listOf("Take a walk after lunch", "Take a walk before breakfast", "Do yoga in the morning", "Rest all day")),
-)
-
-enum class GamePhase { MORNING_BRIEFING, WAITING, EVENING_RECALL, RESULTS }
 
 @Composable
 fun TaskRecallGameScreen(navController: NavController) {
-    var phase by remember { mutableStateOf(GamePhase.MORNING_BRIEFING) }
+    val s = Localization.strings()
+    val narrator = rememberVoiceNarrator()
+    DisposableEffect(Unit) { onDispose { narrator.stop() } }
+
+    val tasks = remember(s) {
+        listOf(
+            GameTask(1, { it.task1 }, "🥛", { it.t1opts }),
+            GameTask(2, { it.task2 }, "📞", { it.t2opts }),
+            GameTask(3, { it.task3 }, "🪴", { it.t3opts }),
+            GameTask(4, { it.task4 }, "🐈", { it.t4opts }),
+            GameTask(5, { it.task5 }, "💊", { it.t5opts })
+        ).shuffled()
+    }
+
+    var isRecallPhase by remember { mutableStateOf(false) }
     var currentTaskIndex by remember { mutableIntStateOf(0) }
-    var recallIndex by remember { mutableIntStateOf(0) }
     var score by remember { mutableIntStateOf(0) }
-    var selectedAnswer by remember { mutableStateOf<String?>(null) }
+    var selectedOption by remember { mutableStateOf<String?>(null) }
     var showFeedback by remember { mutableStateOf(false) }
+    var isFinished by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isRecallPhase, currentTaskIndex) {
+        if (!isRecallPhase) {
+            narrator.say(s.taskRecallIntro)
+        } else if (!isFinished) {
+            narrator.say(s.whatWasTask)
+        }
+    }
 
     AnimatedScreen {
         AnimatedGradientBox(colors = AppGradients.patientColors) {
-            Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "🧠 Yaad Rakho",
+                        s.gameDailyTasks,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = { navController.popBackStack() }) { Text("Exit") }
-                }
-                Spacer(Modifier.height(12.dp))
-
-                AnimatedContent(
-                    targetState = phase,
-                    transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(200)) },
-                    label = "phaseTransition",
-                    modifier = Modifier.weight(1f)
-                ) { currentPhase ->
-                    when (currentPhase) {
-                        GamePhase.MORNING_BRIEFING -> MorningBriefingStep(
-                            task = todaysTasks[currentTaskIndex],
-                            taskNumber = currentTaskIndex + 1,
-                            totalTasks = todaysTasks.size,
-                            onNext = {
-                                if (currentTaskIndex < todaysTasks.size - 1) {
-                                    currentTaskIndex++
-                                } else {
-                                    phase = GamePhase.WAITING
-                                }
-                            }
-                        )
-                        GamePhase.WAITING -> WaitingForEveningStep(
-                            onContinue = { phase = GamePhase.EVENING_RECALL }
-                        )
-                        GamePhase.EVENING_RECALL -> EveningRecallStep(
-                            task = todaysTasks[recallIndex],
-                            questionNumber = recallIndex + 1,
-                            totalQuestions = todaysTasks.size,
-                            selectedAnswer = selectedAnswer,
-                            showFeedback = showFeedback,
-                            onSelect = { answer ->
-                                if (!showFeedback) {
-                                    selectedAnswer = answer
-                                    showFeedback = true
-                                    if (answer == todaysTasks[recallIndex].options[0]) score++
-                                }
-                            },
-                            onNext = {
-                                selectedAnswer = null
-                                showFeedback = false
-                                if (recallIndex < todaysTasks.size - 1) {
-                                    recallIndex++
-                                } else {
-                                    phase = GamePhase.RESULTS
-                                }
-                            }
-                        )
-                        GamePhase.RESULTS -> ResultsStep(
-                            score = score,
-                            total = todaysTasks.size,
-                            onFinish = { navController.popBackStack() },
-                            onRetry = {
-                                currentTaskIndex = 0; recallIndex = 0; score = 0
-                                phase = GamePhase.MORNING_BRIEFING
-                            }
-                        )
+                    TextButton(onClick = { navController.popBackStack() }) {
+                        Text(s.exit, fontSize = 18.sp)
                     }
                 }
-            }
-        }
-    }
-}
 
-@Composable
-private fun MorningBriefingStep(task: DailyTask, taskNumber: Int, totalTasks: Int, onNext: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("☀️ Good Morning! Remember today's tasks", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-        Text("Task $taskNumber of $totalTasks", style = MaterialTheme.typography.bodyMedium, color = Color.DarkGray)
-        Spacer(Modifier.height(32.dp))
-
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(6.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(32.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(task.icon, style = MaterialTheme.typography.displayLarge)
                 Spacer(Modifier.height(16.dp))
-                Text(task.text, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+
+                if (!isRecallPhase) {
+                    // Morning Phase: Memorize
+                    Text(
+                        s.morningPhase,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        s.memorizeTasks,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    tasks.forEach { task ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(task.icon, fontSize = 32.sp)
+                                Spacer(Modifier.width(16.dp))
+                                Text(task.titleKey(s), style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+                    SmritiButton(
+                        text = s.memorizedDone,
+                        onClick = { isRecallPhase = true },
+                        modifier = Modifier.fillMaxWidth().height(64.dp)
+                    )
+
+                } else if (!isFinished) {
+                    // Evening Phase: Recall
+                    val currentTask = tasks[currentTaskIndex]
+                    val options = currentTask.optionsKey(s)
+                    val shuffledOptions = remember(currentTaskIndex, s) { options.shuffled() }
+
+                    Text(
+                        s.eveningPhase,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${s.questionLabel} ${currentTaskIndex + 1} ${s.ofLabel} ${tasks.size}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(8.dp),
+                        modifier = Modifier.size(120.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(currentTask.icon, fontSize = 64.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        s.whatWasTask,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    shuffledOptions.forEach { option ->
+                        val isSelected = selectedOption == option
+                        val isCorrect = option == currentTask.titleKey(s)
+                        
+                        val buttonColor = when {
+                            !showFeedback -> Color.White.copy(alpha = 0.9f)
+                            isCorrect -> Color(0xFFC8E6C9)
+                            isSelected && !isCorrect -> Color(0xFFFFCDD2)
+                            else -> Color.White.copy(alpha = 0.9f)
+                        }
+
+                        Card(
+                            onClick = {
+                                if (!showFeedback) {
+                                    selectedOption = option
+                                    showFeedback = true
+                                    if (isCorrect) score++
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = buttonColor),
+                            elevation = CardDefaults.cardElevation(if (isSelected) 6.dp else 2.dp)
+                        ) {
+                            Text(
+                                text = option,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    if (showFeedback) {
+                        Spacer(Modifier.height(24.dp))
+                        SmritiButton(
+                            text = if (currentTaskIndex < tasks.size - 1) s.next else s.seeResults,
+                            onClick = {
+                                if (currentTaskIndex < tasks.size - 1) {
+                                    currentTaskIndex++
+                                    selectedOption = null
+                                    showFeedback = false
+                                } else {
+                                    isFinished = true
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(64.dp)
+                        )
+                    }
+
+                } else {
+                    // Results
+                    FinalTaskResultCard(score = score, total = tasks.size, s = s) {
+                        navController.popBackStack()
+                    }
+                }
+                
+                Spacer(Modifier.height(40.dp))
             }
         }
-        Spacer(Modifier.height(24.dp))
-        Text("Try to remember this — you'll be asked about it later!",
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center)
-        Spacer(Modifier.weight(1f))
-
-        SmritiButton(
-            text = if (taskNumber < totalTasks) "Got It, Next Task →" else "I'll Remember Everything",
-            onClick = onNext,
-            modifier = Modifier.fillMaxWidth().height(72.dp)
-        )
     }
 }
 
 @Composable
-private fun WaitingForEveningStep(onContinue: () -> Unit) {
-    var secondsLeft by remember { mutableIntStateOf(3) }
-    LaunchedEffect(Unit) {
-        while (secondsLeft > 0) {
-            delay(1000)
-            secondsLeft--
-        }
-    }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 60.dp)) {
-        Text("🌇", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(16.dp))
-        Text("Evening has come...", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text("Let's see how many tasks you remember!", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(40.dp))
-        if (secondsLeft > 0) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        } else {
-            SmritiButton(
-                text = "Start Recall Challenge",
-                onClick = onContinue,
-                modifier = Modifier.fillMaxWidth().height(72.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun EveningRecallStep(
-    task: DailyTask,
-    questionNumber: Int,
-    totalQuestions: Int,
-    selectedAnswer: String?,
-    showFeedback: Boolean,
-    onSelect: (String) -> Unit,
-    onNext: () -> Unit
-) {
-    val correctAnswer = task.options[0]
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("Recall Task $questionNumber of $totalQuestions", style = MaterialTheme.typography.bodyMedium, color = Color.DarkGray, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(4.dp),
-            modifier = Modifier.size(100.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(task.icon, style = MaterialTheme.typography.displaySmall)
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("What was this task about?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-
-        task.options.shuffled(Random(task.hashCode())).forEach { option ->
-            val isSelected = option == selectedAnswer
-            val isCorrectOption = option == correctAnswer
-            val bg = when {
-                !showFeedback -> MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                isSelected && isCorrectOption -> Color(0xFFC8E6C9)
-                isSelected && !isCorrectOption -> Color(0xFFFFCDD2)
-                isCorrectOption -> Color(0xFFC8E6C9)
-                else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-            }
-            Card(
-                onClick = { onSelect(option) },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = bg),
-                elevation = CardDefaults.cardElevation(if (isSelected) 8.dp else 2.dp)
-            ) {
-                Text(option, modifier = Modifier.padding(18.dp), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            }
-        }
-
-        if (showFeedback) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                if (selectedAnswer == correctAnswer) "✅ Perfect Memory!" else "❌ Not quite — remember for tomorrow!",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (selectedAnswer == correctAnswer) Color(0xFF2E7D32) else Color(0xFFC62828)
-            )
-            Spacer(Modifier.height(16.dp))
-            SmritiButton(
-                text = "Next Question →",
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth().height(64.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ResultsStep(score: Int, total: Int, onFinish: () -> Unit, onRetry: () -> Unit) {
+fun FinalTaskResultCard(score: Int, total: Int, s: AppStrings, onBack: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        elevation = CardDefaults.cardElevation(8.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 40.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp).fillMaxWidth()) {
-            Text(if (score >= total * 0.7) "🌟" else "💪", style = MaterialTheme.typography.displayLarge)
-            Spacer(Modifier.height(16.dp))
-            Text("You remembered $score out of $total tasks!", style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                when {
-                    score == total -> "Excellent! Your mind is very sharp today."
-                    score >= total * 0.6 -> "Great job! Keep practicing every day."
-                    else -> "Good effort. Let's try again tomorrow!"
-                },
-                style = MaterialTheme.typography.bodyLarge,
+                text = if (score == total) "🏆 Perfect Recall!" else s.greatJob,
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
+            Spacer(Modifier.height(24.dp))
+            Text(s.youScored, style = MaterialTheme.typography.bodyLarge)
+            Text("$score / $total", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.secondary)
+            Text(s.pointsLabel, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(40.dp))
             SmritiButton(
-                text = "Try Again",
-                onClick = onRetry,
+                text = s.backToGames,
+                onClick = onBack,
                 modifier = Modifier.fillMaxWidth().height(64.dp)
             )
-            Spacer(Modifier.height(12.dp))
-            TextButton(onClick = onFinish) {
-                Text("Back to Games Menu", style = MaterialTheme.typography.bodyLarge)
-            }
         }
     }
 }

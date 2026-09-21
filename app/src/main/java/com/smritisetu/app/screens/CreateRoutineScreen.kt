@@ -18,10 +18,21 @@ import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
 import com.smritisetu.app.ui.SmritiButton
+import com.smritisetu.app.utils.rememberVoiceNarrator
+import com.smritisetu.app.data.Localization
+import com.smritisetu.app.data.AppStrings
 
 @Composable
 fun CreateRoutineScreen(navController: NavController) {
+    val s = Localization.strings()
+    val narrator = rememberVoiceNarrator()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        narrator.say(s.dailyPlanIntro)
+    }
+    DisposableEffect(Unit) { onDispose { narrator.stop() } }
+
     var routineGoal by remember { mutableStateOf("") }
     var medicineDetails by remember { mutableStateOf("") }
     var doctorAppointment by remember { mutableStateOf("") }
@@ -45,63 +56,67 @@ fun CreateRoutineScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "📋 My Daily Plan",
+                        s.dailyPlan,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text(s.back) }
                 }
                 Text(
-                    "Let's set up your schedule for a healthy day!",
+                    s.dailyPlanDesc,
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Spacer(Modifier.height(24.dp))
 
                 // Section 1: Routine Goal
                 RoutineInputCard(
-                    title = "🌈 Today's Plan",
+                    title = s.goalTitle,
                     value = routineGoal,
                     onValueChange = { routineGoal = it; routineForgot = false },
-                    placeholder = "e.g. Walking in the park...",
+                    placeholder = s.goalPlaceholder,
                     isForgot = routineForgot,
-                    onForgotToggle = { routineForgot = !routineForgot; if (routineForgot) routineGoal = "" }
+                    onForgotToggle = { routineForgot = !routineForgot; if (routineForgot) routineGoal = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(20.dp))
 
                 // Section 2: Medicines
                 RoutineInputCard(
-                    title = "💊 My Medicines",
+                    title = s.medTitle,
                     value = medicineDetails,
                     onValueChange = { medicineDetails = it; medicineForgot = false },
-                    placeholder = "Name and time",
+                    placeholder = s.medPlaceholder,
                     isForgot = medicineForgot,
-                    onForgotToggle = { medicineForgot = !medicineForgot; if (medicineForgot) medicineDetails = "" }
+                    onForgotToggle = { medicineForgot = !medicineForgot; if (medicineForgot) medicineDetails = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(20.dp))
 
                 // Section 3: Doctor Appointment
                 RoutineInputCard(
-                    title = "🏥 Doctor Visit",
+                    title = s.docTitle,
                     value = doctorAppointment,
                     onValueChange = { doctorAppointment = it; doctorForgot = false },
-                    placeholder = "Doctor's name and time",
+                    placeholder = s.docPlaceholder,
                     isForgot = doctorForgot,
-                    onForgotToggle = { doctorForgot = !doctorForgot; if (doctorForgot) doctorAppointment = "" }
+                    onForgotToggle = { doctorForgot = !doctorForgot; if (doctorForgot) doctorAppointment = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(32.dp))
 
                 SmritiButton(
-                    text = "Save My Routine ✨",
+                    text = s.save + " ✨",
                     onClick = {
                         if (routineGoal.isNotBlank() || medicineDetails.isNotBlank() || doctorAppointment.isNotBlank() ||
                             routineForgot || medicineForgot || doctorForgot) {
-                            Toast.makeText(context, "Routine updated! We'll remind you.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, s.routineSaved, Toast.LENGTH_LONG).show()
                             navController.popBackStack()
                         } else {
-                            Toast.makeText(context, "Please enter some details or mark as forgot", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, s.fillDetails, Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(64.dp)
@@ -109,7 +124,7 @@ fun CreateRoutineScreen(navController: NavController) {
                 
                 Spacer(Modifier.height(24.dp))
                 Text(
-                    "We are here to help you remember! 😊",
+                    s.helpYouRemember,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -127,7 +142,8 @@ fun RoutineInputCard(
     onValueChange: (String) -> Unit, 
     placeholder: String,
     isForgot: Boolean,
-    onForgotToggle: () -> Unit
+    onForgotToggle: () -> Unit,
+    s: AppStrings
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -143,7 +159,7 @@ fun RoutineInputCard(
             ) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 TextButton(onClick = onForgotToggle) {
-                    Text(if (isForgot) "I remember! 😊" else "🤷‍♂️ I forgot", color = MaterialTheme.colorScheme.secondary)
+                    Text(if (isForgot) s.iRemember else s.iForgot, color = MaterialTheme.colorScheme.secondary)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -160,7 +176,7 @@ fun RoutineInputCard(
                     )
                 )
             } else {
-                Text("No problem, we'll check again later!", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                Text(s.checkLater, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

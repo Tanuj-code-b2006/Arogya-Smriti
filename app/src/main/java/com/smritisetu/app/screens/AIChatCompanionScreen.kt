@@ -1,7 +1,14 @@
 package com.smritisetu.app.screens
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.widget.Toast
-import androidx.compose.foundation.background
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,11 +27,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.data.AppLanguage
+import com.smritisetu.app.data.LanguagePreference
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.*
-import com.smritisetu.app.utils.GeminiApiClient
-import com.smritisetu.app.utils.TtsManager
-import com.smritisetu.app.utils.VoiceInputManager
+import com.smritisetu.app.utils.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class ChatMessage(val text: String, val isUser: Boolean)
 
@@ -33,48 +43,59 @@ fun AIChatCompanionScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-
-    var messages by remember {
-        mutableStateOf(
-            listOf(ChatMessage("Hello Anil ji! 🙏 I'm your friend, Dost. Ready for a chat?", isUser = false))
-        )
-    }
-    var isThinking by remember { mutableStateOf(false) }
-    var isListening by remember { mutableStateOf(false) }
-    var isSpeaking by remember { mutableStateOf(false) }
-    var voiceEnabled by remember { mutableStateOf(true) }
+    val appLanguage = LanguagePreference.selected.value
+    val s = Localization.strings()
 
     val ttsManager = remember { TtsManager(context) }
+    val recorder = remember { WavAudioRecorder() }
+    
+    var isThinking by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var isSpeaking by remember { mutableStateOf(false) }
+    var hasStarted by remember { mutableStateOf(false) }
+    var voiceEnabled by remember { mutableStateOf(true) }
+    var isBhashiniActive by remember { mutableStateOf(false) }
+
+    var messages by remember {
+        mutableStateOf(listOf(ChatMessage(s.dostInitialMsg, isUser = false)))
+    }
+
+    val usingBhashiniConfig = BhashiniApiClient.isConfigured() && appLanguage.bhashiniVoiceSupported
+
+    // Custom Speech Manager (No Google Popup)
     val voiceInputManager = remember {
         VoiceInputManager(
             context = context,
             onResult = { spokenText ->
-                isListening = false
+                isRecording = false
                 if (spokenText.isNotBlank()) {
-                    messages = messages + ChatMessage(spokenText, isUser = true)
-                    scope.launch {
-                        isThinking = true
-                        try {
-                            val history = messages.map { (if (it.isUser) "user" else "model") to it.text }
-                            val reply = GeminiApiClient.getNextMemoryQuestionOrReply(history, spokenText)
-                            messages = messages + ChatMessage(reply, isUser = false)
-                            if (voiceEnabled) {
-                                isSpeaking = true
-                                ttsManager.speak(reply) { isSpeaking = false }
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                        } finally {
-                            isThinking = false
-                        }
-                    }
+                    handleUserSpeech(spokenText, messages, scope, appLanguage, voiceEnabled, context, ttsManager,
+                        onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it })
                 }
             },
             onError = { error ->
-                isListening = false
-                Toast.makeText(context, "Dost didn't catch that: $error", Toast.LENGTH_SHORT).show()
+                isRecording = false
+                isBhashiniActive = false
+                Toast.makeText(context, "Dost: $error", Toast.LENGTH_SHORT).show()
             }
         )
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> 
+        if (granted) {
+            if (usingBhashiniConfig) {
+                recorder.start(context)
+                isBhashiniActive = true
+            } else {
+                voiceInputManager.startListening(appLanguage.localeTag)
+                isBhashiniActive = false
+            }
+            isRecording = true
+        } else {
+            Toast.makeText(context, "Microphone permission needed", Toast.LENGTH_SHORT).show()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -84,9 +105,7 @@ fun AIChatCompanionScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
-    }
+    LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) }
 
     AnimatedScreen {
         AnimatedGradientBox(colors = AppGradients.patientColors) {
@@ -96,15 +115,37 @@ fun AIChatCompanionScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "🗣️ Dost - Talking Friend",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Text(
+                            s.dostTitle,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isBhashiniActive) Color(0xFF2E7D32) else Color(0xFF546E7A),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (isBhashiniActive) "via Bhashini 🇮🇳" else "via Native Voice",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "🌐 ${appLanguage.label}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = {
-                            voiceEnabled = !voiceEnabled
+                        IconButton(onClick = { 
+                            voiceEnabled = !voiceEnabled 
                             if (!voiceEnabled) ttsManager.stop()
                         }) {
                             Icon(
@@ -113,10 +154,13 @@ fun AIChatCompanionScreen(navController: NavController) {
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        TextButton(onClick = { navController.popBackStack() }) { Text("Exit") }
+                        TextButton(onClick = {
+                            ttsManager.stop()
+                            navController.popBackStack()
+                        }) { Text(s.exit) }
                     }
                 }
-
+                
                 Spacer(Modifier.height(16.dp))
 
                 LazyColumn(
@@ -126,7 +170,7 @@ fun AIChatCompanionScreen(navController: NavController) {
                 ) {
                     items(messages) { msg -> ChatBubble(msg) }
                     if (isThinking) {
-                        item { ChatBubble(ChatMessage("Dost is thinking... 🤔", isUser = false)) }
+                        item { ChatBubble(ChatMessage(s.dostThinking, isUser = false)) }
                     }
                 }
 
@@ -136,15 +180,51 @@ fun AIChatCompanionScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().height(150.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isListening) {
-                        PulsingMicAnimation()
+                    if (isRecording) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            PulsingMicAnimation()
+                            Spacer(Modifier.height(8.dp))
+                            Text(s.dostListening, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            
+                            Spacer(Modifier.height(8.dp))
+                            
+                            OutlinedButton(
+                                onClick = { 
+                                    if (isBhashiniActive) {
+                                        isRecording = false
+                                        val wavFile = recorder.stop(context)
+                                        scope.launch {
+                                            isThinking = true
+                                            val transcript = wavFile?.let { VoiceService.transcribe(it, appLanguage) }
+                                            if (!transcript.isNullOrBlank()) {
+                                                handleUserSpeech(transcript, messages, scope, appLanguage, voiceEnabled, context, ttsManager,
+                                                    onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it })
+                                            } else {
+                                                isThinking = false
+                                                isBhashiniActive = false
+                                                Toast.makeText(context, "Bhashini missed it", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    } else {
+                                        voiceInputManager.stopListening()
+                                        isRecording = false
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(s.stopListening, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     } else {
                         SmritiButton(
-                            text = if (isSpeaking) "Dost is speaking..." else "Tap to Talk to Dost",
+                            text = if (!hasStarted) s.startChatting else s.tapToTalk,
                             onClick = {
-                                ttsManager.stop()
-                                isListening = true
-                                voiceInputManager.startListening()
+                                if (!hasStarted) {
+                                    beginConversation(scope, appLanguage, voiceEnabled, context, ttsManager, onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it }, onStarted = { hasStarted = true })
+                                } else {
+                                    ttsManager.stop()
+                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             },
                             modifier = Modifier.fillMaxWidth().height(72.dp),
                             enabled = !isThinking && !isSpeaking,
@@ -153,6 +233,57 @@ fun AIChatCompanionScreen(navController: NavController) {
                     }
                 }
             }
+        }
+    }
+}
+
+private fun beginConversation(
+    scope: CoroutineScope,
+    appLanguage: AppLanguage,
+    voiceEnabled: Boolean,
+    context: Context,
+    ttsManager: TtsManager,
+    onUpdate: (List<ChatMessage>) -> Unit,
+    onThinking: (Boolean) -> Unit,
+    onSpeaking: (Boolean) -> Unit,
+    onStarted: () -> Unit
+) {
+    onStarted()
+    scope.launch {
+        onThinking(true)
+        val reply = GeminiApiClient.getNextMemoryQuestionOrReply(emptyList(), null, appLanguage.label)
+        onUpdate(listOf(ChatMessage(reply, isUser = false)))
+        onThinking(false)
+        if (voiceEnabled) {
+            onSpeaking(true)
+            VoiceService.speak(reply, appLanguage, context, ttsManager) { onSpeaking(false) }
+        }
+    }
+}
+
+private fun handleUserSpeech(
+    spokenText: String,
+    currentMessages: List<ChatMessage>,
+    scope: CoroutineScope,
+    appLanguage: AppLanguage,
+    voiceEnabled: Boolean,
+    context: Context,
+    ttsManager: TtsManager,
+    onUpdate: (List<ChatMessage>) -> Unit,
+    onThinking: (Boolean) -> Unit,
+    onSpeaking: (Boolean) -> Unit
+) {
+    val updated = currentMessages + ChatMessage(spokenText, isUser = true)
+    onUpdate(updated)
+    scope.launch {
+        onThinking(true)
+        val history = updated.map { (if (it.isUser) "user" else "model") to it.text }
+        val reply = GeminiApiClient.getNextMemoryQuestionOrReply(history, spokenText, appLanguage.label)
+        onUpdate(updated + ChatMessage(reply, isUser = false))
+        onThinking(false)
+        if (voiceEnabled) {
+            onSpeaking(true)
+            VoiceService.speak(reply, appLanguage, context, ttsManager) { onSpeaking(false) }
         }
     }
 }

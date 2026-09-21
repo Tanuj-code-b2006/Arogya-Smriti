@@ -18,9 +18,20 @@ import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
 import com.smritisetu.app.ui.SmritiButton
+import com.smritisetu.app.utils.rememberVoiceNarrator
+import com.smritisetu.app.data.Localization
+import com.smritisetu.app.data.AppStrings
 
 @Composable
 fun DailyRecallScreen(navController: NavController) {
+    val s = Localization.strings()
+    val narrator = rememberVoiceNarrator()
+    
+    LaunchedEffect(Unit) {
+        narrator.say(s.dailyRecallIntro)
+    }
+    DisposableEffect(Unit) { onDispose { narrator.stop() } }
+
     var morningText by remember { mutableStateOf("") }
     var afternoonText by remember { mutableStateOf("") }
     var eveningText by remember { mutableStateOf("") }
@@ -46,51 +57,57 @@ fun DailyRecallScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "📝 Today's Memories",
+                        s.todayMemories,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text(s.back) }
                 }
                 Text(
-                    "Try to remember what you did today. It's okay if you forget!",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = s.tryRememberDesc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 Spacer(Modifier.height(24.dp))
 
                 RecallField(
-                    label = "☀️ In the Morning...",
+                    label = "☀️ ${s.morning}...",
                     text = morningText,
                     onValueChange = { morningText = it; morningForgot = false },
                     isForgot = morningForgot,
-                    onForgotToggle = { morningForgot = !morningForgot; if (morningForgot) morningText = "" }
+                    onForgotToggle = { morningForgot = !morningForgot; if (morningForgot) morningText = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(20.dp))
 
                 RecallField(
-                    label = "🌤️ In the Afternoon...",
+                    label = "🌤️ ${s.afternoon}...",
                     text = afternoonText,
                     onValueChange = { afternoonText = it; afternoonForgot = false },
                     isForgot = afternoonForgot,
-                    onForgotToggle = { afternoonForgot = !afternoonForgot; if (afternoonForgot) afternoonText = "" }
+                    onForgotToggle = { afternoonForgot = !afternoonForgot; if (afternoonForgot) afternoonText = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(20.dp))
 
                 RecallField(
-                    label = "🌙 In the Evening...",
+                    label = "🌙 ${s.evening}...",
                     text = eveningText,
                     onValueChange = { eveningText = it; eveningForgot = false },
                     isForgot = eveningForgot,
-                    onForgotToggle = { eveningForgot = !eveningForgot; if (eveningForgot) eveningText = "" }
+                    onForgotToggle = { eveningForgot = !eveningForgot; if (eveningForgot) eveningText = "" },
+                    s = s
                 )
 
                 Spacer(Modifier.height(32.dp))
 
                 if (!showResult) {
                     SmritiButton(
-                        text = "Done for Today ✅",
+                        text = s.doneForToday,
                         onClick = { showResult = true },
                         modifier = Modifier.fillMaxWidth().height(64.dp)
                     )
@@ -103,7 +120,7 @@ fun DailyRecallScreen(navController: NavController) {
                     
                     val points = answeredCount * 10
                     
-                    ResultCard(answeredCount, points) {
+                    RecallResultCard(answeredCount, points, s) {
                         navController.popBackStack()
                     }
                 }
@@ -119,7 +136,8 @@ fun RecallField(
     text: String,
     onValueChange: (String) -> Unit,
     isForgot: Boolean,
-    onForgotToggle: () -> Unit
+    onForgotToggle: () -> Unit,
+    s: AppStrings
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -135,7 +153,7 @@ fun RecallField(
             ) {
                 Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 TextButton(onClick = onForgotToggle) {
-                    Text(if (isForgot) "I remember! 😊" else "🤷‍♂️ I forgot", color = MaterialTheme.colorScheme.secondary)
+                    Text(if (isForgot) s.iRemember else s.iForgot, color = MaterialTheme.colorScheme.secondary)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -143,13 +161,13 @@ fun RecallField(
                 OutlinedTextField(
                     value = text,
                     onValueChange = onValueChange,
-                    placeholder = { Text("What did you do?") },
+                    placeholder = { Text(s.whatDidYouDo) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
             } else {
                 Text(
-                    "No worries! We can try again tomorrow.",
+                    text = s.noWorriesMsg,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray,
                     modifier = Modifier.padding(vertical = 12.dp)
@@ -160,10 +178,10 @@ fun RecallField(
 }
 
 @Composable
-fun ResultCard(count: Int, points: Int, onDismiss: () -> Unit) {
+fun RecallResultCard(count: Int, points: Int, s: AppStrings, onDismiss: () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9).copy(alpha = 0.95f)),
         elevation = CardDefaults.cardElevation(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -173,35 +191,37 @@ fun ResultCard(count: Int, points: Int, onDismiss: () -> Unit) {
         ) {
             Text(
                 text = when (count) {
-                    3 -> "🎉 Fantastic!"
-                    2 -> "🌟 Great Job!"
-                    1 -> "👍 Well Done!"
-                    else -> "🌈 Keep Trying!"
+                    3 -> s.resFantastic
+                    2 -> s.resGreat
+                    1 -> s.resWellDone
+                    else -> s.resKeepTrying
                 },
                 style = MaterialTheme.typography.headlineMedium,
-                color = Color(0xFF2E7D32)
+                color = Color(0xFF2E7D32),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = when (count) {
-                    3 -> "You remembered everything today!"
-                    2 -> "You remembered most of your day!"
-                    1 -> "You remembered part of your day!"
-                    else -> "It's okay, let's try more tomorrow!"
+                    3 -> s.msgAll
+                    2 -> s.msgMost
+                    1 -> s.msgSome
+                    else -> s.msgNone
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "You earned $points points!",
+                "${s.earnedPoints} $points ${s.pointsShort}!",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFEF6C00)
             )
             Spacer(Modifier.height(24.dp))
             SmritiButton(
-                text = "See you later!",
+                text = s.seeYouLater,
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             )

@@ -1,5 +1,6 @@
 package com.smritisetu.app.screens
-
+import androidx.compose.runtime.DisposableEffect
+import com.smritisetu.app.utils.rememberVoiceNarrator
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.smritisetu.app.R
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
@@ -49,6 +51,11 @@ val familyPhotoPool = listOf(
 
 @Composable
 fun MemoryMatchGameScreen(navController: NavController) {
+    val s = Localization.strings()
+    val narrator = rememberVoiceNarrator()
+    LaunchedEffect(Unit) { narrator.say(s.memoryMatchIntro) }
+    DisposableEffect(Unit) { onDispose { narrator.stop() } }
+
     var gridSize by remember { mutableIntStateOf(4) } // starts easy: 4 cards (2 pairs)
     var round by remember { mutableIntStateOf(1) }
     var cards by remember { mutableStateOf(generateCards(gridSize)) }
@@ -95,6 +102,7 @@ fun MemoryMatchGameScreen(navController: NavController) {
                 }
                 else -> "Nicely done! Keeping the same level."
             }
+            narrator.say(difficultyMessage)
             showRoundComplete = true
         }
     }
@@ -112,14 +120,14 @@ fun MemoryMatchGameScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "🧩 Memory Match",
+                        s.gameMemoryMatch,
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
-                    TextButton(onClick = { navController.popBackStack() }) { Text("Exit") }
+                    TextButton(onClick = { navController.popBackStack() }) { Text(s.exit) }
                 }
-                Text("Moves: $moves    Mistakes: $mistakes", style = MaterialTheme.typography.bodyMedium)
+                Text("${s.movesLabel}: $moves    ${s.mistakesLabel}: $mistakes", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
 
                 LazyVerticalGrid(
@@ -153,10 +161,10 @@ fun MemoryMatchGameScreen(navController: NavController) {
                     cards = generateCards(gridSize)
                     moves = 0; mistakes = 0
                     showRoundComplete = false
-                }) { Text("Next Round") }
+                }) { Text(s.next) }
             },
             dismissButton = {
-                TextButton(onClick = { navController.popBackStack() }) { Text("Finish") }
+                TextButton(onClick = { navController.popBackStack() }) { Text(s.exit) }
             }
         )
     }

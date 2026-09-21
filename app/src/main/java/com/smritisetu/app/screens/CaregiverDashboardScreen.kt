@@ -67,6 +67,27 @@ fun CaregiverDashboardScreen(navController: NavController) {
                     }
                 }
 
+                Spacer(Modifier.height(12.dp))
+
+                // Action Cards
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    DashboardNavCard(
+                        "📄", 
+                        "Weekly\nReport", 
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        navController.navigate("weekly_report")
+                    }
+                    
+                    DashboardNavCard(
+                        "📣", 
+                        "Send\nAlert", 
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        navController.navigate("send_notification")
+                    }
+                }
+
                 Spacer(Modifier.height(20.dp))
 
                 Card(

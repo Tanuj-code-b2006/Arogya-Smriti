@@ -1,34 +1,45 @@
 package com.smritisetu.app.screens
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.smritisetu.app.R
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
 
-data class GameItem(val icon: String, val title: String, val route: String?, val description: String)
+data class GameItem(val imageRes: Int, val title: String, val route: String?, val description: String)
 
 @Composable
 fun GameMenuScreen(navController: NavController) {
+    val s = Localization.strings()
     val games = listOf(
-        GameItem("🧩", "Memory Match", "memory_game", "Match pairs of cards"),
-        GameItem("👀", "Attention Tap", "attention_game", "Tap the right fruits"),
-        GameItem("🗓️", "Routine Order", "routine_sequencer", "Arrange your morning"),
-        GameItem("🧠", "Daily Tasks", "task_recall_game", "Remember today's tasks"),
-        GameItem("🖼️", "Pehchano Kaun?", "photo_quiz", "Identify cultural items"),
-        GameItem("🗣️", "Dost - Talking Friend", "ai_chat_companion", "Chat with your AI friend"),
+        GameItem(R.drawable.identifywho, s.gamePhotoQuiz, "photo_quiz", s.descPhotoQuiz),
+        GameItem(R.drawable.talkingaifriend, s.gameDostAi, "ai_chat_companion", s.descDostAi),
+        GameItem(R.drawable.daily_tasks, s.gameDailyTasks, "task_recall_game", s.descDailyTasks),
+        GameItem(R.drawable.memorymatch, s.gameMemoryMatch, "memory_game", s.descMemoryMatch),
+        GameItem(R.drawable.attentiontap, s.gameAttentionTap, "attention_game", s.descAttentionTap),
+        GameItem(R.drawable.routine_order, s.gameRoutineOrder, "routine_sequencer", s.descRoutineOrder),
     )
 
     AnimatedScreen {
@@ -36,37 +47,41 @@ fun GameMenuScreen(navController: NavController) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
+                    .padding(16.dp)
             ) {
+                Spacer(Modifier.height(20.dp))
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "Mind Games 🎮",
+                        text = s.chooseGame,
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.ExtraBold
                     )
                     TextButton(onClick = { navController.popBackStack() }) {
-                        Text("Exit", fontSize = 18.sp)
+                        Text(s.exit, fontSize = 18.sp)
                     }
                 }
                 
                 Text(
-                    "Keep your mind sharp and active!",
+                    text = s.startJourney,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = Color.DarkGray,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(1), // Simple single column for easier reading
+                    columns = GridCells.Fixed(2),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(games) { game ->
-                        GameMenuCard(game) {
+                        ModernGameCard(game) {
                             game.route?.let { navController.navigate(it) }
                         }
                     }
@@ -77,51 +92,77 @@ fun GameMenuScreen(navController: NavController) {
 }
 
 @Composable
-fun GameMenuCard(game: GameItem, onClick: () -> Unit) {
+fun ModernGameCard(game: GameItem, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "border")
+    val borderAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(110.dp),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(6.dp),
+            .height(180.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(12.dp),
+        border = BorderStroke(
+            2.dp, 
+            Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary.copy(alpha = borderAlpha),
+                    MaterialTheme.colorScheme.secondary.copy(alpha = borderAlpha)
+                )
+            )
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                modifier = Modifier.size(70.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(20.dp))
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(game.icon, fontSize = 40.sp)
-                }
+                Image(
+                    painter = painterResource(id = game.imageRes),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
             }
             
-            Spacer(Modifier.width(20.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp, start = 8.dp, end = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = game.title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     text = game.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
-            
-            Text("▶", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

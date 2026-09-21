@@ -1,40 +1,50 @@
 package com.smritisetu.app.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
+import com.smritisetu.app.ui.SmritiButton
+import com.smritisetu.app.utils.rememberVoiceNarrator
 import kotlinx.coroutines.delay
 
 @Composable
 fun AttentionGameScreen(navController: NavController) {
-    val targetSymbol = "🍎"
-    val allSymbols = listOf("🍎", "🍌", "🍇", "🍊", "🥭", "🍍")
-    var board by remember { mutableStateOf(List(9) { allSymbols.random() }) }
+    val s = Localization.strings()
+    val narrator = rememberVoiceNarrator()
+    LaunchedEffect(Unit) { narrator.say(s.attentionTapIntro) }
+    DisposableEffect(Unit) { onDispose { narrator.stop() } }
+
     var score by remember { mutableIntStateOf(0) }
     var timeLeft by remember { mutableIntStateOf(30) }
     var finished by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        while (timeLeft > 0) {
-            delay(1000)
+    val allSymbols = listOf("🍎", "🍌", "🍇", "🍊", "🍍", "🍓", "🍉")
+    val targetSymbol = "🍎"
+    var board by remember { mutableStateOf(List(9) { allSymbols.random() }) }
+
+    LaunchedEffect(key1 = timeLeft) {
+        if (timeLeft > 0) {
+            delay(1000L)
             timeLeft--
+        } else {
+            finished = true
         }
-        finished = true
     }
 
     AnimatedScreen {
-        AnimatedGradientBox {
+        AnimatedGradientBox(colors = AppGradients.patientColors) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -42,13 +52,14 @@ fun AttentionGameScreen(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "👀 Attention Tap",
+                    s.gameAttentionTap,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
                 Text("Tap every $targetSymbol you see!", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(8.dp))
-                Text("Score: $score      Time left: ${timeLeft}s", style = MaterialTheme.typography.bodyMedium)
+                Text("${s.scoreLabel}: $score      Time left: ${timeLeft}s", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(20.dp))
 
                 if (!finished) {
@@ -86,12 +97,11 @@ fun AttentionGameScreen(navController: NavController) {
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.height(40.dp))
-                        Button(
+                        SmritiButton(
+                            text = s.backToGames,
                             onClick = { navController.popBackStack() },
                             modifier = Modifier.height(64.dp).fillMaxWidth(0.6f)
-                        ) {
-                            Text("Back to Games")
-                        }
+                        )
                     }
                 }
             }

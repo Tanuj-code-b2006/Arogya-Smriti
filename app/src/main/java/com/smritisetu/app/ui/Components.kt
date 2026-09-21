@@ -88,6 +88,13 @@ object AppGradients {
         Color(0xFFE3F2FD), // Very Light Blue
         Color(0xFFFFF3E0)  // Very Light Orange
     )
+
+    val nightColors = listOf(
+        Color(0xFF0F2027), // Dark Navy
+        Color(0xFF203A43), // Medium Navy
+        Color(0xFF2C5364), // Blue-Grey
+        Color(0xFF1B1B2F)  // Deep Dark
+    )
 }
 
 @Composable
