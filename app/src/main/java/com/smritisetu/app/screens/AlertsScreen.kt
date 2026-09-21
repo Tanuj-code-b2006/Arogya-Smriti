@@ -3,8 +3,6 @@ package com.smritisetu.app.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -64,30 +62,10 @@ fun AlertsScreen(navController: NavController) {
 
                 Spacer(Modifier.height(16.dp))
 
-                BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                    val columns = if (maxWidth > 600.dp) 2 else 1
-                    
-                    if (columns == 1) {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(alerts, key = { it.id }) { alert ->
-                                AlertCard(alert = alert, onAcknowledge = {
-                                    AlertsRepository.acknowledge(alert.id)
-                                })
-                            }
-                        }
-                    } else {
-                        // Responsive Grid for Tablet / Landscape
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(alerts.size) { index ->
-                                val alert = alerts[index]
                                 AlertCard(alert = alert, onAcknowledge = {
                                     AlertsRepository.acknowledge(alert.id)
                                 })
@@ -97,8 +75,6 @@ fun AlertsScreen(navController: NavController) {
                 }
             }
         }
-    }
-}
 
 @Composable
 fun AlertCard(alert: AlertItem, onAcknowledge: () -> Unit) {

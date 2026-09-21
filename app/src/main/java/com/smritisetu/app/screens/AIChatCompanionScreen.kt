@@ -1,11 +1,8 @@
 package com.smritisetu.app.screens
 
-import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,15 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.smritisetu.app.data.AppLanguage
-import com.smritisetu.app.data.LanguagePreference
-import com.smritisetu.app.data.Localization
-import com.smritisetu.app.ui.*
-import com.smritisetu.app.utils.*
-import kotlinx.coroutines.CoroutineScope
+import com.smritisetu.app.ui.AnimatedGradientBox
+import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.SmritiButton
+import com.smritisetu.app.utils.GeminiApiClient
+import com.smritisetu.app.utils.TtsManager
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -43,109 +38,114 @@ fun AIChatCompanionScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val appLanguage = LanguagePreference.selected.value
-    val s = Localization.strings()
 
+    // TTS instance, tied to this screen's lifecycle
     val ttsManager = remember { TtsManager(context) }
-    val recorder = remember { WavAudioRecorder() }
-    
+    DisposableEffect(Unit) {
+        onDispose { ttsManager.shutdown() }
+    }
+
+    var messages by remember {
+        mutableStateOf(
+            listOf(ChatMessage("Hello Anil ji! 🙏 I'm your memory companion. Ready for a little chat?", isUser = false))
+        )
+    }
     var isThinking by remember { mutableStateOf(false) }
-    var isRecording by remember { mutableStateOf(false) }
+    var isListening by remember { mutableStateOf(false) }
     var isSpeaking by remember { mutableStateOf(false) }
     var hasStarted by remember { mutableStateOf(false) }
     var voiceEnabled by remember { mutableStateOf(true) }
-    var isBhashiniActive by remember { mutableStateOf(false) }
 
-    var messages by remember {
-        mutableStateOf(listOf(ChatMessage(s.dostInitialMsg, isUser = false)))
-    }
-
-    val usingBhashiniConfig = BhashiniApiClient.isConfigured() && appLanguage.bhashiniVoiceSupported
-
-    // Custom Speech Manager (No Google Popup)
-    val voiceInputManager = remember {
-        VoiceInputManager(
-            context = context,
-            onResult = { spokenText ->
-                isRecording = false
-                if (spokenText.isNotBlank()) {
-                    handleUserSpeech(spokenText, messages, scope, appLanguage, voiceEnabled, context, ttsManager,
-                        onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it })
+    val speechLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isListening = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                messages = messages + ChatMessage(spokenText, isUser = true)
+                scope.launch {
+                    isThinking = true
+                    try {
+                        val history = messages.map { (if (it.isUser) "user" else "model") to it.text }
+                        val reply = GeminiApiClient.getNextMemoryQuestionOrReply(history, spokenText)
+                        messages = messages + ChatMessage(reply, isUser = false)
+                        if (voiceEnabled) {
+                            isSpeaking = true
+                            ttsManager.speak(reply) { isSpeaking = false }
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    } finally {
+                        isThinking = false
+                    }
                 }
-            },
-            onError = { error ->
-                isRecording = false
-                isBhashiniActive = false
-                Toast.makeText(context, "Dost: $error", Toast.LENGTH_SHORT).show()
             }
-        )
+        }
     }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> 
+    ) { granted ->
         if (granted) {
-            if (usingBhashiniConfig) {
-                recorder.start(context)
-                isBhashiniActive = true
-            } else {
-                voiceInputManager.startListening(appLanguage.localeTag)
-                isBhashiniActive = false
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your answer...")
             }
-            isRecording = true
+            isListening = true
+            speechLauncher.launch(intent)
         } else {
-            Toast.makeText(context, "Microphone permission needed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission needed for voice chat", Toast.LENGTH_SHORT).show()
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            ttsManager.shutdown()
-            voiceInputManager.destroy()
+    fun startListening() {
+        Toast.makeText(context, "Listening now — please speak...", Toast.LENGTH_SHORT).show()
+        micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+    }
+
+    fun beginConversation() {
+        hasStarted = true
+        scope.launch {
+            isThinking = true
+            try {
+                val reply = GeminiApiClient.getNextMemoryQuestionOrReply(emptyList(), null)
+                messages = messages + ChatMessage(reply, isUser = false)
+                if (voiceEnabled) {
+                    isSpeaking = true
+                    ttsManager.speak(reply) { isSpeaking = false }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error starting conversation: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            } finally {
+                isThinking = false
+            }
         }
     }
 
-    LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1) }
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+    }
 
     AnimatedScreen {
-        AnimatedGradientBox(colors = AppGradients.patientColors) {
+        AnimatedGradientBox {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            s.dostTitle,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = if (isBhashiniActive) Color(0xFF2E7D32) else Color(0xFF546E7A),
-                                modifier = Modifier.padding(top = 2.dp)
-                            ) {
-                                Text(
-                                    text = if (isBhashiniActive) "via Bhashini 🇮🇳" else "via Native Voice",
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "🌐 ${appLanguage.label}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.DarkGray
-                            )
-                        }
-                    }
+                    Text(
+                        "🗣️ Memory Companion",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { 
-                            voiceEnabled = !voiceEnabled 
+                        IconButton(onClick = {
+                            voiceEnabled = !voiceEnabled
                             if (!voiceEnabled) ttsManager.stop()
                         }) {
                             Icon(
@@ -157,133 +157,52 @@ fun AIChatCompanionScreen(navController: NavController) {
                         TextButton(onClick = {
                             ttsManager.stop()
                             navController.popBackStack()
-                        }) { Text(s.exit) }
+                        }) { Text("Exit") }
                     }
                 }
-                
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(8.dp))
 
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(messages) { msg -> ChatBubble(msg) }
                     if (isThinking) {
-                        item { ChatBubble(ChatMessage(s.dostThinking, isUser = false)) }
+                        item { ChatBubble(ChatMessage("Thinking... 🤔", isUser = false)) }
+                    }
+                    if (isSpeaking) {
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Speaking...", style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
 
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(150.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isRecording) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            PulsingMicAnimation()
-                            Spacer(Modifier.height(8.dp))
-                            Text(s.dostListening, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            
-                            Spacer(Modifier.height(8.dp))
-                            
-                            OutlinedButton(
-                                onClick = { 
-                                    if (isBhashiniActive) {
-                                        isRecording = false
-                                        val wavFile = recorder.stop(context)
-                                        scope.launch {
-                                            isThinking = true
-                                            val transcript = wavFile?.let { VoiceService.transcribe(it, appLanguage) }
-                                            if (!transcript.isNullOrBlank()) {
-                                                handleUserSpeech(transcript, messages, scope, appLanguage, voiceEnabled, context, ttsManager,
-                                                    onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it })
-                                            } else {
-                                                isThinking = false
-                                                isBhashiniActive = false
-                                                Toast.makeText(context, "Bhashini missed it", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    } else {
-                                        voiceInputManager.stopListening()
-                                        isRecording = false
-                                    }
-                                },
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(s.stopListening, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    } else {
-                        SmritiButton(
-                            text = if (!hasStarted) s.startChatting else s.tapToTalk,
-                            onClick = {
-                                if (!hasStarted) {
-                                    beginConversation(scope, appLanguage, voiceEnabled, context, ttsManager, onUpdate = { messages = it }, onThinking = { isThinking = it }, onSpeaking = { isSpeaking = it }, onStarted = { hasStarted = true })
-                                } else {
-                                    ttsManager.stop()
-                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(72.dp),
-                            enabled = !isThinking && !isSpeaking,
-                            icon = { Icon(Icons.Default.Mic, contentDescription = null) }
-                        )
+                SmritiButton(
+                    text = when {
+                        !hasStarted -> "Start Chatting"
+                        isSpeaking -> "AI is speaking..."
+                        isListening -> "Listening..."
+                        else -> "Tap to Speak Your Answer"
+                    },
+                    onClick = {
+                        if (!hasStarted) beginConversation() else startListening()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(72.dp),
+                    containerColor = if (isListening) Color(0xFFC62828) else MaterialTheme.colorScheme.primary,
+                    enabled = !isThinking && !isSpeaking,
+                    icon = {
+                        Icon(Icons.Filled.Mic, contentDescription = "Speak", modifier = Modifier.size(28.dp))
                     }
-                }
+                )
             }
-        }
-    }
-}
-
-private fun beginConversation(
-    scope: CoroutineScope,
-    appLanguage: AppLanguage,
-    voiceEnabled: Boolean,
-    context: Context,
-    ttsManager: TtsManager,
-    onUpdate: (List<ChatMessage>) -> Unit,
-    onThinking: (Boolean) -> Unit,
-    onSpeaking: (Boolean) -> Unit,
-    onStarted: () -> Unit
-) {
-    onStarted()
-    scope.launch {
-        onThinking(true)
-        val reply = GeminiApiClient.getNextMemoryQuestionOrReply(emptyList(), null, appLanguage.label)
-        onUpdate(listOf(ChatMessage(reply, isUser = false)))
-        onThinking(false)
-        if (voiceEnabled) {
-            onSpeaking(true)
-            VoiceService.speak(reply, appLanguage, context, ttsManager) { onSpeaking(false) }
-        }
-    }
-}
-
-private fun handleUserSpeech(
-    spokenText: String,
-    currentMessages: List<ChatMessage>,
-    scope: CoroutineScope,
-    appLanguage: AppLanguage,
-    voiceEnabled: Boolean,
-    context: Context,
-    ttsManager: TtsManager,
-    onUpdate: (List<ChatMessage>) -> Unit,
-    onThinking: (Boolean) -> Unit,
-    onSpeaking: (Boolean) -> Unit
-) {
-    val updated = currentMessages + ChatMessage(spokenText, isUser = true)
-    onUpdate(updated)
-    scope.launch {
-        onThinking(true)
-        val history = updated.map { (if (it.isUser) "user" else "model") to it.text }
-        val reply = GeminiApiClient.getNextMemoryQuestionOrReply(history, spokenText, appLanguage.label)
-        onUpdate(updated + ChatMessage(reply, isUser = false))
-        onThinking(false)
-        if (voiceEnabled) {
-            onSpeaking(true)
-            VoiceService.speak(reply, appLanguage, context, ttsManager) { onSpeaking(false) }
         }
     }
 }
@@ -302,15 +221,14 @@ fun ChatBubble(msg: ChatMessage) {
                 bottomEnd = if (msg.isUser) 2.dp else 16.dp
             ),
             colors = CardDefaults.cardColors(
-                containerColor = (if (msg.isUser) Color(0xFFDCEDC8) else Color.White).copy(alpha = 0.9f)
+                containerColor = (if (msg.isUser) Color(0xFFDCEDC8) else Color(0xFFFFFFFF)).copy(alpha = 0.9f)
             ),
-            elevation = CardDefaults.cardElevation(4.dp)
+            elevation = CardDefaults.cardElevation(3.dp)
         ) {
             Text(
                 text = msg.text,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (msg.isUser) FontWeight.Normal else FontWeight.Medium
+                modifier = Modifier.padding(14.dp),
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     }
