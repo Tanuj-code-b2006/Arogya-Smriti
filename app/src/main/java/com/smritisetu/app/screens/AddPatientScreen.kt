@@ -10,10 +10,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.smritisetu.app.data.PatientViewModel
+import com.smritisetu.app.ui.AnimatedGradientBox
+import com.smritisetu.app.ui.AnimatedScreen
+import com.smritisetu.app.ui.AppGradients
+import com.smritisetu.app.ui.SmritiButton
 
 @Composable
 fun AddPatientScreen(
@@ -29,21 +34,42 @@ fun AddPatientScreen(
     var phone by remember { mutableStateOf("") }
     var genderMenuExpanded by remember { mutableStateOf(false) }
 
+    AnimatedScreen {
+        AnimatedGradientBox(colors = AppGradients.caregiverColors) {
             Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text(
+                        "➕ Add New Patient",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
                     TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
                 }
                 Spacer(Modifier.height(24.dp))
 
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
                             label = { Text("Patient Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         Spacer(Modifier.height(16.dp))
 
@@ -51,6 +77,8 @@ fun AddPatientScreen(
                             value = age,
                             onValueChange = { if (it.all { ch -> ch.isDigit() }) age = it },
                             label = { Text("Age") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         Spacer(Modifier.height(16.dp))
 
@@ -62,10 +90,14 @@ fun AddPatientScreen(
                                 readOnly = true,
                                 label = { Text("Gender") },
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
                                 trailingIcon = {
                                     TextButton(onClick = { genderMenuExpanded = true }) { Text("▼") }
                                 }
                             )
+                            DropdownMenu(
+                                expanded = genderMenuExpanded,
+                                onDismissRequest = { genderMenuExpanded = false }) {
                                 listOf("Male", "Female", "Other").forEach { option ->
                                     DropdownMenuItem(text = { Text(option) }, onClick = {
                                         gender = option
@@ -80,6 +112,8 @@ fun AddPatientScreen(
                             value = address,
                             onValueChange = { address = it },
                             label = { Text("Address") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         Spacer(Modifier.height(16.dp))
 
@@ -87,9 +121,16 @@ fun AddPatientScreen(
                             value = phone,
                             onValueChange = { if (it.all { ch -> ch.isDigit() } && it.length <= 10) phone = it },
                             label = { Text("Phone Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         )
+                    }
+                }
+
                 Spacer(Modifier.height(32.dp))
 
+                SmritiButton(
+                    text = "💾 Save Patient",
                     onClick = {
                         if (name.isBlank() || age.isBlank() || address.isBlank() || phone.isBlank()) {
                             Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
@@ -107,6 +148,13 @@ fun AddPatientScreen(
                             }
                         }
                     },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
+}
