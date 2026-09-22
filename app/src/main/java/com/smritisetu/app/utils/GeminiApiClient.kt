@@ -60,8 +60,7 @@ import java.io.IOException
 object GeminiApiClient {
 
     // 🔑 PASTE YOUR FREE GEMINI API KEY HERE (from https://aistudio.google.com/apikey)
-    private const val API_KEY = "AIzaSyDxLUlCy7_iP0czN6FmAfIVkDNBD-jdP5A"
-
+    private const val API_KEY = BuildConfig.GEMINI_API_KEY
     private const val ENDPOINT =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$API_KEY"
 
