@@ -111,7 +111,7 @@ fun WelcomeScreen(navController: NavController) {
 
                 SmritiButton(
                     text = s.iAmPatient,
-                    onClick = { navController.navigate("patient_home") },
+                    onClick = { navController.navigate("patient_login") },
                     modifier = Modifier.fillMaxWidth(0.85f).height(72.dp),
                     containerColor = MaterialTheme.colorScheme.secondary
                 )
@@ -120,7 +120,7 @@ fun WelcomeScreen(navController: NavController) {
                 
                 SmritiButton(
                     text = s.iAmCaregiver,
-                    onClick = { navController.navigate("caregiver_section") },
+                    onClick = { navController.navigate("caregiver_login") },
                     modifier = Modifier.fillMaxWidth(0.85f).height(72.dp),
                     containerColor = MaterialTheme.colorScheme.primary
                 )

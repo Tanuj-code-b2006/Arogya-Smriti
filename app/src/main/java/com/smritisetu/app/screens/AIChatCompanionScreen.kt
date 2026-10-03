@@ -1,5 +1,6 @@
 package com.smritisetu.app.screens
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.data.Localization
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.SmritiButton
@@ -36,6 +38,7 @@ data class ChatMessage(val text: String, val isUser: Boolean)
 @Composable
 fun AIChatCompanionScreen(navController: NavController) {
     val context = LocalContext.current
+    val s = Localization.strings()
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -47,7 +50,7 @@ fun AIChatCompanionScreen(navController: NavController) {
 
     var messages by remember {
         mutableStateOf(
-            listOf(ChatMessage("Hello Anil ji! 🙏 I'm your memory companion. Ready for a little chat?", isUser = false))
+            listOf(ChatMessage(s.dostInitialMsg, isUser = false))
         )
     }
     var isThinking by remember { mutableStateOf(false) }
@@ -93,18 +96,18 @@ fun AIChatCompanionScreen(navController: NavController) {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your answer...")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, s.tapToTalk)
             }
             isListening = true
             speechLauncher.launch(intent)
         } else {
-            Toast.makeText(context, "Microphone permission needed for voice chat", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission needed", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun startListening() {
-        Toast.makeText(context, "Listening now — please speak...", Toast.LENGTH_SHORT).show()
-        micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        Toast.makeText(context, s.dostListening, Toast.LENGTH_SHORT).show()
+        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     fun beginConversation() {
@@ -119,7 +122,7 @@ fun AIChatCompanionScreen(navController: NavController) {
                     ttsManager.speak(reply) { isSpeaking = false }
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Error starting conversation: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             } finally {
                 isThinking = false
             }
@@ -139,7 +142,7 @@ fun AIChatCompanionScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "🗣️ Memory Companion",
+                        s.dostTitle,
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -157,7 +160,7 @@ fun AIChatCompanionScreen(navController: NavController) {
                         TextButton(onClick = {
                             ttsManager.stop()
                             navController.popBackStack()
-                        }) { Text("Exit") }
+                        }) { Text(s.exit) }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -169,14 +172,14 @@ fun AIChatCompanionScreen(navController: NavController) {
                 ) {
                     items(messages) { msg -> ChatBubble(msg) }
                     if (isThinking) {
-                        item { ChatBubble(ChatMessage("Thinking... 🤔", isUser = false)) }
+                        item { ChatBubble(ChatMessage(s.dostThinking, isUser = false)) }
                     }
                     if (isSpeaking) {
                         item {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Speaking...", style = MaterialTheme.typography.bodyMedium,
+                                Text(s.dostSpeaking, style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary)
                             }
                         }
@@ -187,10 +190,10 @@ fun AIChatCompanionScreen(navController: NavController) {
 
                 SmritiButton(
                     text = when {
-                        !hasStarted -> "Start Chatting"
-                        isSpeaking -> "AI is speaking..."
-                        isListening -> "Listening..."
-                        else -> "Tap to Speak Your Answer"
+                        !hasStarted -> s.startChatting
+                        isSpeaking -> s.dostSpeaking
+                        isListening -> s.dostListening
+                        else -> s.tapToTalk
                     },
                     onClick = {
                         if (!hasStarted) beginConversation() else startListening()

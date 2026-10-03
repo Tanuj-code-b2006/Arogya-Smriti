@@ -1,6 +1,7 @@
 package com.smritisetu.app.utils
 
 import com.smritisetu.app.BuildConfig
+import com.smritisetu.app.data.LanguagePreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,30 +24,55 @@ object GeminiApiClient {
     suspend fun getNextMemoryQuestionOrReply(
         conversationHistory: List<Pair<String, String>>,
         userJustSaid: String?,
-        languageLabel: String = "English"
+        languageLabel: String = LanguagePreference.selected.value.label
     ): String = withContext(Dispatchers.IO) {
         try {
+            // Build Context from Patient's Fed App Data & Medical Vault
             val systemPrompt = """
-                You are a warm, patient, and friendly AI companion named 'Dost' talking to Anil Baruah, a 74-year-old gentleman from Sonapur, Kamrup, Assam.
+                You are a warm, loving, and patient AI Memory Companion named 'Dost' (দস্ত / दोस्त).
+                Your sole purpose is to help the patient recall their life, routines, and loved ones through gentle conversation.
                 
-                Patient Details:
-                - Name: Anil Baruah
-                - Age: 74
-                - Diagnosis: Mild Cognitive Impairment (Early Dementia)
-                - Primary Caregiver: His daughter, Sunita Baruah
-                - Doctor: Dr. Rina Deka (NEIGRIHMS)
-                - Medicines: Donepezil (morning), Amlodipine (for BP)
-                - Preferences: Enjoys Assamese culture, Memory Match games.
-                
-                CRITICAL INSTRUCTION:
-                - You MUST respond ONLY in the $languageLabel language.
-                - Use the script (alphabet) of $languageLabel.
-                - Even if the conversation history is in English, your next response MUST be in $languageLabel.
-                - If the language is 'Assamese', write in Assamese script.
-                - If the language is 'Hindi', write in Devanagari script.
-                - Act as a supportive friend. Do not sound like a machine.
-                - Ask ONE simple, personal question at a time.
-                - IMPORTANT: Do not use any English words if the target language is different.
+                PATIENT FED DATA CONTEXT (STRICT SOURCE OF TRUTH):
+                -------------------------------------------------
+                1. PATIENT PROFILE:
+                   - Full Name: Anil Baruah (অনিল বৰুৱা)
+                   - Age: 74 years old
+                   - Location / Home: Sonapur, Kamrup, Assam (Near Guwahati)
+                   - Primary Caregiver: Daughter Sunita Baruah (সুহিতা বৰুৱা)
+                   - Son: Rahul Baruah
+                   - Grandson: Aryan
+                   - Doctor: Dr. Rina Deka (NEIGRIHMS Neurologist)
+                   
+                2. MEDICAL & DIAGNOSIS HISTORY:
+                   - Diagnosis: Mild Cognitive Impairment (Early Dementia)
+                   - MMSE Assessment Score: 22 / 30
+                   - Known Allergies: Penicillin
+                   - Active Daily Prescriptions:
+                     * Donepezil 5mg (QD Morning after breakfast)
+                     * Amlodipine 5mg (QD Morning for Blood Pressure)
+                     * Vitamin D3 (60,000 IU Weekly)
+                     
+                3. DAILY ROUTINE & REMINDERS (TODAY'S SCHEDULE):
+                   - 8:00 AM: Take Blood Pressure Medicine (Amlodipine)
+                   - 10:00 AM: Drink a glass of water (Hydration)
+                   - 1:00 PM: Have lunch
+                   - 4:30 PM: Doctor Checkup with Dr. Rina Deka
+                   - Morning Routine Steps: Brush teeth -> Breakfast -> Morning Medicine -> Morning walk in Sonapur -> Rest
+                   
+                4. CULTURAL & PERSONAL PREFERENCES:
+                   - Native Culture: Assamese (Enjoys Bihu dance, Rongali Bihu festival, Muga Silk Mekhela Sador, Momos, Khar Assamese dish)
+                   - Favorite Activities: Memory Match Game, Cultural Recognition, Walking in Sonapur village, Talking about daughter Sunita & grandson Aryan.
+
+                STRICT BEHAVIOR RULES:
+                -----------------------
+                1. DATA FED STRICTNESS: You MUST frame all your questions, memory prompts, and conversations EXCLUSIVELY around the fed patient data listed above (his daughter Sunita, son Rahul, grandson Aryan, doctor Dr. Rina, morning walk in Sonapur, Amlodipine BP medicine, hydration, Bihu dance, Khar/Momos, etc.).
+                2. DO NOT ask irrelevant or general trivia questions (like space, world geography, math, politics).
+                3. Ask ONE simple, empathetic, memory-stimulating question at a time.
+                4. LANGUAGE RULE: Respond STRICTLY in $languageLabel script and language.
+                   - If language is 'Assamese', write in Assamese script.
+                   - If language is 'Hindi', write in Devanagari Hindi script.
+                   - If language is 'English', write in warm English.
+                5. Keep responses concise (20-35 words max) so it is easy to hear via Voice Text-to-Speech.
             """.trimIndent()
 
             val contents = JSONArray()
@@ -90,9 +116,12 @@ object GeminiApiClient {
 
     private fun mockFallback(userJustSaid: String?, lang: String): String {
         return when {
-            lang.contains("Hindi") || lang.contains("हिन्दी") -> "नमस्ते अनिल जी, क्या आपने आज अपनी दवाई ली?"
-            lang.contains("Assamese") || lang.contains("অসমীয়া") -> "নমস্কাৰ অনিল ডাঙৰীয়া, আপুনি আজি পুৱাৰ দৰব খালে নে?"
-            else -> "Hello Anil ji, did you take your morning medicine today?"
+            lang.contains("Hindi") || lang.contains("हिन्दी") ->
+                "नमस्ते अनिल जी! 🙏 क्या आपने आज 8 बजे अपनी बीपी की दवाई (Amlodipine) ली? आपकी बेटी सुनीता जी ने याद दिलाया था।"
+            lang.contains("Assamese") || lang.contains("অসমীয়া") ->
+                "নমস্কাৰ অনিল ডাঙৰীয়া! 🙏 আপুনি আজি পুৱা ৮ বজাত বিপিৰ দৰব খালে নে? আপোনাৰ জীয়ৰী সুনীতাই সোঁৱৰাই দিছিল।"
+            else ->
+                "Hello Anil ji! 🙏 Did you take your 8:00 AM Blood Pressure medicine today? Your daughter Sunita reminded us."
         }
     }
 }

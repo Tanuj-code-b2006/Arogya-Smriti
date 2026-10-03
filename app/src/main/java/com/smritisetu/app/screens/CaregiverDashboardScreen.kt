@@ -1,21 +1,28 @@
 package com.smritisetu.app.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.R
 import com.smritisetu.app.data.AlertsRepository
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
@@ -46,8 +53,39 @@ fun CaregiverDashboardScreen(navController: NavController) {
                     )
                     TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
                 }
-                Text("Patient: Anil Baruah, Age 74", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(20.dp))
+
+                Spacer(Modifier.height(8.dp))
+
+                // Patient Info Card with Image
+                Card(
+                    onClick = { navController.navigate("patient_profile") },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    elevation = CardDefaults.cardElevation(3.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.patient_image),
+                            contentDescription = "Anil Baruah",
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Anil Baruah", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("Age 74 • Male • Sonapur, Assam", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
 
                 // Quick nav cards to new detailed screens
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -85,6 +123,14 @@ fun CaregiverDashboardScreen(navController: NavController) {
                         modifier = Modifier.weight(1f)
                     ) {
                         navController.navigate("send_notification")
+                    }
+
+                    DashboardNavCard(
+                        "🛡️", 
+                        "Secure Data\nVault", 
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        navController.navigate("secure_patient_data")
                     }
                 }
 

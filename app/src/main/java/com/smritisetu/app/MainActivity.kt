@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
 // Screens that should show the caregiver bottom nav bar
 private val caregiverScreensWithBottomBar = setOf(
-    "caregiver_dashboard", "patient_profile", "monitoring", "alerts", "weekly_report", "send_notification"
+    "caregiver_dashboard", "patient_profile", "monitoring", "alerts", "weekly_report", "send_notification", "secure_patient_data"
 )
 
 @Composable
@@ -81,6 +81,8 @@ fun AppRoot() {
                 modifier = Modifier.padding(padding)
             ) {
                 composable("welcome") { WelcomeScreen(navController) }
+                composable("patient_login") { PatientLoginScreen(navController) }
+                composable("caregiver_login") { CaregiverLoginScreen(navController) }
                 composable("patient_home") { PatientHomeScreen(navController) }
                 composable("game_menu") { GameMenuScreen(navController) }
                 composable("memory_game") { MemoryMatchGameScreen(navController) }
@@ -103,6 +105,7 @@ fun AppRoot() {
                 composable("photo_quiz") { PhotoGuessQuizScreen(navController) }
                 composable("weekly_report") { WeeklyReportScreen(navController) }
                 composable("send_notification") { SendNotificationScreen(navController) }
+                composable("secure_patient_data") { SecurePatientDataScreen(navController) }
             }
 
             // Live push-style banner, shown above everything, only on caregiver screens

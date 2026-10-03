@@ -1,6 +1,7 @@
 package com.smritisetu.app.screens
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,9 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.smritisetu.app.R
 import com.smritisetu.app.ui.AnimatedGradientBox
 import com.smritisetu.app.ui.AnimatedScreen
 import com.smritisetu.app.ui.AppGradients
@@ -47,6 +51,47 @@ fun PatientProfileScreen(navController: NavController) {
                 LazyColumnLike {
                     // Profile header card
                     ProfileHeaderCard()
+                    Spacer(Modifier.height(16.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B5E20).copy(alpha = 0.9f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🛡️", style = MaterialTheme.typography.titleLarge)
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            "Secure Patient Data Vault",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "AES-256 Encrypted • ABHA Linked",
+                                            color = Color(0xFFA5D6A7),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = { navController.navigate("secure_patient_data") },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("🔒 Manage Encrypted Records & DPDP Consent →", color = Color.White)
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(16.dp))
 
                     SectionCard("🩺 Medical Information") {
@@ -93,15 +138,15 @@ fun ProfileHeaderCard() {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
     ) {
         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.patient_image),
+                contentDescription = "Anil Baruah",
                 modifier = Modifier
-                    .size(72.dp)
+                    .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("👴", style = MaterialTheme.typography.headlineLarge)
-            }
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                contentScale = ContentScale.Crop
+            )
             Spacer(Modifier.width(16.dp))
             Column {
                 Text("Anil Baruah", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)

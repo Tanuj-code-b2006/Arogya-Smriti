@@ -45,6 +45,15 @@ fun CaregiverSectionScreen(navController: NavController) {
                     containerColor = MaterialTheme.colorScheme.secondary
                 )
 
+                Spacer(Modifier.height(20.dp))
+
+                SmritiButton(
+                    text = "🛡️ Secure Patient Data Vault",
+                    onClick = { navController.navigate("secure_patient_data") },
+                    modifier = Modifier.fillMaxWidth(0.9f).height(72.dp),
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+
                 Spacer(Modifier.height(40.dp))
                 TextButton(onClick = { navController.popBackStack() }) {
                     Text("← Back")
